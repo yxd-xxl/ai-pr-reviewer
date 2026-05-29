@@ -1,0 +1,16 @@
+# GitHub App Manifest for AI PR Reviewer
+# Install at: https://github.com/settings/apps/new
+name: AI PR Reviewer
+description: AI-driven code review with SAST+LLM, evidence-gated findings, fix generation
+url: https://github.com/yxd-xxl/ai-pr-reviewer
+hook_attributes:
+  url: https://your-domain.com/webhook
+  active: true
+permissions:
+  pull_requests: write
+  issues: write
+  contents: read
+  metadata: read
+events:
+  - pull_request
+  - pull_request_review_comment
