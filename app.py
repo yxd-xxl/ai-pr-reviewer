@@ -142,7 +142,7 @@ elif st.session_state.stage == "prs":
                     from src.core.types import PullRequest
                     pr = PullRequest(owner=owner, repo=repo, number=0,
                         title=f"Unreviewed changes ({head_sha[:7]})",
-                        url=f"https://github.com/{owner}/{repo}",
+                        description="", url=f"https://github.com/{owner}/{repo}",
                         base_branch="main", head_branch="HEAD",
                         base_sha=last_sha, head_sha=head_sha)
                     from src.pipeline import run_review
