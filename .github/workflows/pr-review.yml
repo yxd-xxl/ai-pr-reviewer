@@ -36,16 +36,41 @@ jobs:
             -o /tmp/review.md \
             --delivery github 2>&1 | tee /tmp/review.log
 
-      - name: Post Markdown Report as Comment
+      - name: Extract risk score
+        id: risk
+        if: always()
+        run: |
+          SCORE=$(grep -oP 'Risk Score:\s*\K\d+' /tmp/review.log || echo "0")
+          echo "score=$SCORE" >> $GITHUB_OUTPUT
+          echo "Risk Score: $SCORE"
+
+      - name: Add risk label
+        if: steps.risk.outputs.score != ''
+        run: |
+          SCORE=${{ steps.risk.outputs.score }}
+          if [ "$SCORE" -ge 70 ]; then
+            LABEL="risk:critical"
+          elif [ "$SCORE" -ge 40 ]; then
+            LABEL="risk:high"
+          elif [ "$SCORE" -ge 15 ]; then
+            LABEL="risk:medium"
+          else
+            LABEL="risk:low"
+          fi
+          gh pr edit "${{ github.event.pull_request.number }}" --add-label "$LABEL" 2>/dev/null || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Post Markdown Report
         if: always()
         run: |
           if [ -f /tmp/review.md ]; then
-            echo '<!-- ai-pr-reviewer-report -->' > /tmp/comment.md
+            MARKER='<!-- ai-pr-reviewer-report -->'
+            echo "$MARKER" > /tmp/comment.md
             cat /tmp/review.md >> /tmp/comment.md
 
-            # Find and update existing report comment, or create new one
             COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-              --jq '.[] | select(.body | contains("<!-- ai-pr-reviewer-report -->")) | .id' | head -1)
+              --jq '.[] | select(.body | contains("'"$MARKER"'")) | .id' | head -1)
 
             if [ -n "$COMMENT_ID" ]; then
               gh api "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" \
