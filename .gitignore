@@ -18,3 +18,4 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 .ai-pr-reviewer/state.json
+.ai-pr-reviewer/reviews.db
