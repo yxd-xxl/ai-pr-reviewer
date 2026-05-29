@@ -5,6 +5,7 @@ import click
 from src.context.pr_url import parse_pr_url
 from src.context.github_client import GitHubClient
 from src.context.review_state import ReviewState
+from src.context.change_detector import ChangeDetector
 from src.core.config import DEFAULT_CONFIG
 from src.pipeline import run_review
 from src.eval.metrics import EvalCase, compute_metrics, per_category_summary
@@ -181,6 +182,54 @@ def evaluate(eval_dir: str):
     click.echo(metrics.summary())
     click.echo()
     click.echo(per_category_summary(cases, results))
+
+@cli.command()
+@click.argument("owner_repo")
+def auto(owner_repo: str):
+    """Auto-detect changes and review if threshold met"""
+    token = os.getenv("GITHUB_TOKEN", "")
+    if not token:
+        click.echo("Error: GITHUB_TOKEN not set", err=True)
+        sys.exit(1)
+
+    parts = owner_repo.split("/")
+    if len(parts) != 2:
+        click.echo("Error: use format owner/repo", err=True)
+        sys.exit(1)
+
+    detector = ChangeDetector()
+    should, sha, commits = detector.check(parts[0], parts[1], token)
+    click.echo(f"Repository: {owner_repo}")
+    click.echo(f"HEAD: {sha[:7] if sha else 'unknown'}")
+    click.echo(f"Commits since last review: {commits}")
+
+    if should:
+        click.echo("Threshold met — triggering review.")
+        # Find open PRs and review them
+        from src.context.github_client import GitHubClient
+        client = GitHubClient(token=token)
+        # For MVP, review the first open PR
+        try:
+            import urllib.request, json
+            url = f"https://api.github.com/repos/{parts[0]}/{parts[1]}/pulls?state=open&per_page=3"
+            req = urllib.request.Request(url, headers={
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "ai-pr-reviewer",
+            })
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                prs = json.loads(resp.read())
+            if prs:
+                pr_url = prs[0]["html_url"]
+                click.echo(f"Reviewing: {pr_url}")
+                pr, files, result = run_review(pr_url, token)
+                click.echo(f"  {len(result.findings)} finding(s)")
+            else:
+                click.echo("No open PRs found.")
+        except Exception as e:
+            click.echo(f"Failed to fetch PRs: {e}")
+    else:
+        click.echo(f"Below threshold ({commits} commits, need {3}+). Skipping.")
 
 
 if __name__ == "__main__":
