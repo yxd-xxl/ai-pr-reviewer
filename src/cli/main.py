@@ -12,6 +12,7 @@ from src.eval.metrics import EvalCase, compute_metrics, per_category_summary
 from src.eval.runner import evaluate_result
 from src.delivery.markdown import render_markdown
 from src.delivery.github_delivery import GitHubDelivery
+from src.delivery.pr_generator import generate_fix_pr
 import yaml
 
 
@@ -230,6 +231,32 @@ def auto(owner_repo: str):
             click.echo(f"Failed to fetch PRs: {e}")
     else:
         click.echo(f"Below threshold ({commits} commits, need {3}+). Skipping.")
+
+@cli.command()
+@click.argument("pr_url")
+@click.option("--findings", default=None, help="Comma-separated finding indices to fix")
+@click.option("--publish", is_flag=True, default=False, help="Actually create the fix PR")
+def fix(pr_url: str, findings: str | None, publish: bool):
+    """Generate a fix PR from reviewed findings"""
+    token = os.getenv("GITHUB_TOKEN", "")
+    if not token:
+        click.echo("Error: GITHUB_TOKEN not set", err=True)
+        sys.exit(1)
+
+    indices = None
+    if findings:
+        indices = [int(x.strip()) for x in findings.split(",")]
+
+    click.echo(f"Reviewing: {pr_url} ...")
+    pr, files, result = run_review(pr_url, token)
+    click.echo(f"  {len(result.findings)} finding(s), "
+               f"{sum(1 for f in result.findings if f.fix_patch)} with fix patch")
+
+    actions = generate_fix_pr(result, pr, token, finding_indices=indices, dry_run=not publish)
+    mode = "DRY-RUN" if not publish else "PUBLISH"
+    click.echo(f"  Mode: {mode}")
+    for a in actions:
+        click.echo(f"    {a}")
 
 
 if __name__ == "__main__":
