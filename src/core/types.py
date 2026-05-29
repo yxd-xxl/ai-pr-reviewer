@@ -83,6 +83,8 @@ class Finding:
     classification: str = "new"  # new | preexisting | nit
     evidence: str | None = None
     fix_patch: str | None = None  # generated unified diff for fix
+    fix_verified: bool = False  # whether fix passed verification
+    fix_verification_note: str | None = None  # verification result detail
     rule_id: str | None = None
     analyzer: str | None = None
 
