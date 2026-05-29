@@ -78,7 +78,9 @@ def run_review(pr_url: str, token: str,
     # Mode-based strategy
     if config.mode == "fast":
         categories = "security,bug" if categories == "all" else categories
-    analysis_mode = AnalysisMode.from_categories(categories, adapter)
+    verify_all = config.mode == "deep"
+    analysis_mode = AnalysisMode.from_categories(categories, adapter, verify_all=verify_all,
+                                                  fix_categories=config.auto_fix_categories)
     plan = analysis_mode.build_plan()
     analyzer = CompositeAnalyzer(plan) if len(plan) > 1 else plan[0]
     result = analyzer.analyze(ctx)

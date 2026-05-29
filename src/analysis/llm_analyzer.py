@@ -12,9 +12,13 @@ from src.security.bandit_runner import run_bandit
 
 
 class LLMAnalyzer(Analyzer):
-    def __init__(self, adapter: LLMAdapter, parallel: int = 4):
+    def __init__(self, adapter: LLMAdapter, parallel: int = 4,
+                 fix_categories: list | None = None,
+                 verify_all: bool = False):
         self._adapter = adapter
         self._parallel = parallel
+        self._fix_categories = fix_categories or ["security", "bug"]
+        self._verify_all = verify_all
 
     def analyze(self, context: ReviewContext) -> ReviewResult:
         warnings: list[str] = []
@@ -49,9 +53,10 @@ class LLMAnalyzer(Analyzer):
                     except Exception as e:
                         errors.append(f"Failed to analyze {fc.path}: {e}")
 
-        # Stage 3: Independent verification for HIGH/CRITICAL (parallel)
+        # Stage 3: Independent verification (mode-based depth)
+        verify_sevs = ("critical", "high") if not self._verify_all else ("critical", "high", "medium")
         to_verify = [f for f in findings
-                     if f.severity in ("critical", "high") and f.confidence >= 0.5]
+                     if f.severity in verify_sevs and f.confidence >= 0.5]
         verified: list[Finding] = []
         rejected_count = 0
 
@@ -79,9 +84,10 @@ class LLMAnalyzer(Analyzer):
             if f not in to_verify:
                 verified.append(f)
 
-        # Stage 4: Generate fix patches (parallel, for medium+)
+        # Stage 4: Generate fix patches (parallel, for medium+ in fix_categories)
         fixable = [f for f in verified
-                   if f.severity in ('critical', 'high', 'medium')]
+                   if f.severity in ('critical', 'high', 'medium')
+                   and f.category in self._fix_categories]
         if fixable:
             with ThreadPoolExecutor(max_workers=min(4, len(fixable))) as pool:
                 futures = {pool.submit(self._generate_fix, f, context): f
