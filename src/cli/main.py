@@ -87,10 +87,11 @@ def inspect(pr_url: str):
 @click.option("--yes", "confirm", is_flag=True, default=False,
               help="Confirm publish action")
 @click.option("--categories", default="all", help="Analysis categories: all, security, bug, performance, style (comma-separated)")
+@click.option("--json", "json_output", is_flag=True, default=False, help="Output JSON")
 @click.option("--force", "force_review", is_flag=True, default=False,
               help="Re-review even if already reviewed")
 def review(pr_url: str, output: str | None, delivery_mode: str, categories: str,
-           publish: bool, confirm: bool, force_review: bool):
+           publish: bool, confirm: bool, force_review: bool, json_output: bool = False):
     """Review a GitHub PR"""
     token = os.getenv("GITHUB_TOKEN", "")
     if not token:
