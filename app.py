@@ -188,15 +188,20 @@ elif st.session_state.stage == "analyze":
         head_sha = st.session_state.get("auto_sha", "")
 
         if head_sha and last_sha != head_sha:
+            diff_text = ""
             # Fetch diff via GitHub compare API
-            diff_url = f"https://api.github.com/repos/{st.session_state.auto_owner}/{st.session_state.auto_repo}/compare/{last_sha}...{head_sha}"
+            if last_sha:
+                diff_url = f"https://api.github.com/repos/{st.session_state.auto_owner}/{st.session_state.auto_repo}/compare/{last_sha}...{head_sha}"
+            else:
+                # First review — just get the HEAD commit diff
+                diff_url = f"https://api.github.com/repos/{st.session_state.auto_owner}/{st.session_state.auto_repo}/commits/{head_sha}"
             req = _ur2.Request(diff_url, headers={"Authorization": f"Bearer {token}",
                                                      "Accept": "application/vnd.github.diff",
                                                      "User-Agent": "ai-pr-reviewer"})
             try:
                 with _ur2.urlopen(req, timeout=15) as resp:
                     diff_text = resp.read().decode("utf-8", errors="replace")
-                files = parse_unified_diff(diff_text)
+                files = parse_unified_diff(diff_text) if diff_text.strip() else []
                 pr = PullRequest(
                     owner=st.session_state.auto_owner, repo=st.session_state.auto_repo,
                     number=0, title=f"Unreviewed changes ({head_sha[:7]})",
