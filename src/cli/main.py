@@ -258,6 +258,43 @@ def fix(pr_url: str, findings: str | None, publish: bool):
     for a in actions:
         click.echo(f"    {a}")
 
+@cli.command()
+@click.argument("pr_url")
+@click.option("--finding", type=int, required=True, help="Finding index to ask about")
+@click.option("--question", required=True, help="Question to ask")
+def ask(pr_url: str, finding: int, question: str):
+    """Ask a follow-up question about a finding"""
+    token = os.getenv("GITHUB_TOKEN", "")
+    if not token:
+        click.echo("Error: GITHUB_TOKEN not set", err=True)
+        sys.exit(1)
+
+    click.echo(f"Reviewing: {pr_url} ...")
+    pr, files, result = run_review(pr_url, token)
+
+    if finding < 1 or finding > len(result.findings):
+        click.echo(f"Error: finding {finding} out of range (1-{len(result.findings)})", err=True)
+        sys.exit(1)
+
+    f = result.findings[finding - 1]
+    ctx = __import__('src.core.types', fromlist=['ReviewContext']).ReviewContext(pr=pr, files=files)
+
+    from src.llm import create_adapter
+    adapter = create_adapter()
+    from src.analysis.llm_analyzer import LLMAnalyzer
+    analyzer = LLMAnalyzer(adapter)
+
+    click.echo(f"Asking about: {f.title}")
+    click.echo(f"Question: {question}")
+    click.echo()
+
+    resp = analyzer.followup(f, question, ctx)
+    click.echo(f"Answer: {resp.get('answer', 'No answer')}")
+    if resp.get('alternative_fixes'):
+        click.echo("Alternatives:")
+        for alt in resp['alternative_fixes']:
+            click.echo(f"  - {alt}")
+
 
 if __name__ == "__main__":
     cli()
