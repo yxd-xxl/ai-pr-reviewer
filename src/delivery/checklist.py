@@ -1,4 +1,4 @@
-from src.core.types import ReviewResult
+from src.core.types import ReviewResult, Finding
 
 _SEVERITY_WEIGHTS = {
     "critical": 60,
@@ -6,6 +6,8 @@ _SEVERITY_WEIGHTS = {
     "medium": 12,
     "low": 3,
 }
+
+_URGENCY_ORDER = {"critical": 1, "high": 2, "medium": 3, "low": 4}
 
 
 def risk_score(result: ReviewResult) -> int:
@@ -59,3 +61,22 @@ def render_checklist_md(result: ReviewResult) -> str:
 
     lines.extend(generate_checklist(result))
     return "\n".join(lines)
+
+def action_plan(result: ReviewResult) -> list[str]:
+    """Generate priority-ordered action plan from findings."""
+    sorted_findings = sorted(
+        result.findings,
+        key=lambda f: (_URGENCY_ORDER.get(f.severity, 99), -(f.confidence or 0))
+    )
+    lines = ["", "## Action Plan", ""]
+    current_urgency = None
+    labels = {1: "Blocking", 2: "Should Fix", 3: "Consider", 4: "Optional"}
+    for f in sorted_findings:
+        u = _URGENCY_ORDER.get(f.severity, 99)
+        if u != current_urgency:
+            current_urgency = u
+            lines.append(f"### {labels.get(u, 'Other')}")
+        lines.append(f"- [ ] [{f.severity.upper()}] {f.title}")
+        if f.fix_patch:
+            lines.append(f"  - Fix available: `fix patch generated`")
+    return lines
