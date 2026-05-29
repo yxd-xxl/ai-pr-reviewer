@@ -13,6 +13,7 @@ from src.eval.runner import evaluate_result
 from src.delivery.markdown import render_markdown
 from src.delivery.github_delivery import GitHubDelivery
 from src.delivery.pr_generator import generate_fix_pr
+from src.store.db import ReviewRepo
 import yaml
 
 
@@ -294,6 +295,22 @@ def ask(pr_url: str, finding: int, question: str):
         click.echo("Alternatives:")
         for alt in resp['alternative_fixes']:
             click.echo(f"  - {alt}")
+
+@cli.command()
+@click.option("--repo", default="", help="Filter by repo (e.g. owner/repo)")
+@click.option("--limit", default=20, help="Number of entries")
+def history(repo: str, limit: int):
+    """Show review history"""
+    db = ReviewRepo()
+    rows = db.get_history(repo=repo, limit=limit)
+    if not rows:
+        click.echo("No review history yet.")
+        return
+    click.echo(f"{'ID':<5} {'Date':<20} {'Repo':<25} {'PR':<40} {'F':>3} {'Risk':>4}")
+    click.echo("-" * 100)
+    for r in rows:
+        click.echo(f"{r['id']:<5} {r['created_at'][:19]:<20} {r['repo']:<25} {r['pr_title'][:38]:<40} {r['findings_count']:>3} {r['risk_score']:>4}")
+    db.close()
 
 
 if __name__ == "__main__":

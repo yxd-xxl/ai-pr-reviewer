@@ -95,6 +95,20 @@ def run_review(pr_url: str, token: str,
         max_findings=max_f,
     )
     result = pp.process(result)
+
+    # Save to local DB
+    try:
+        from src.store.db import ReviewRepo
+        from src.delivery.checklist import risk_score
+        repo = f"{pr.owner}/{pr.repo}"
+        ReviewRepo().save_review(
+            pr.url, pr.title, repo, result.findings,
+            risk_score=risk_score(result),
+            mode=config.mode, categories=categories
+        )
+    except Exception:
+        pass
+
     timing["postprocess"] = round(time.time() - t3, 2)
 
     timing["total"] = round(time.time() - t0, 2)
