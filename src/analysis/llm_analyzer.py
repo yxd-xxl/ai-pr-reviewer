@@ -206,3 +206,20 @@ class LLMAnalyzer(Analyzer):
                 finding.confidence = max(0, finding.confidence - 0.15)
         except Exception:
             pass
+
+    def followup(self, finding, question: str, ctx) -> dict:
+        """Answer a follow-up question about a finding."""
+        fc_match = None
+        for fc in ctx.files:
+            if fc.path == finding.location.file:
+                fc_match = fc
+                break
+        if fc_match is None:
+            return {"answer": "File context not available.", "is_valid_concern": True, "alternative_fixes": []}
+        code = fc_match.full_content or fc_match.diff
+        try:
+            from src.analysis.prompts.followup import build_followup_prompt
+            system, user = build_followup_prompt(finding, code, question, fc_match.language)
+            return self._adapter.complete_json(system=system, user=user)
+        except Exception:
+            return {"answer": "Unable to process follow-up.", "is_valid_concern": True, "alternative_fixes": []}
