@@ -1,5 +1,5 @@
 import pytest
-from src.analysis.mode import AnalysisMode, CATEGORY_MAP
+from src.analysis.mode import AnalysisMode
 from src.analysis.composite import CompositeAnalyzer
 from src.analysis.analyzer import MockAnalyzer
 from src.analysis.llm_analyzer import LLMAnalyzer

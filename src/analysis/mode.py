@@ -1,15 +1,6 @@
 from src.analysis.analyzer import Analyzer
-from src.analysis.llm_analyzer import LLMAnalyzer
-from src.analysis.security_analyzer import SecurityAnalyzer
+from src.analysis.registry import build_analyzers, list_registered
 from src.llm import LLMAdapter, MockLLMAdapter
-
-CATEGORY_MAP: dict[str, type[Analyzer]] = {
-    "security": SecurityAnalyzer,
-    "bug": LLMAnalyzer,
-    "performance": LLMAnalyzer,
-    "style": LLMAnalyzer,
-    "architecture": LLMAnalyzer,
-}
 
 
 class AnalysisMode:
@@ -30,7 +21,7 @@ class AnalysisMode:
         cats = [c.strip() for c in raw.split(",")]
         if "all" in cats:
             cats = ["all"]
-        valid = {"all", "security", "bug", "performance", "style", "architecture"}
+        valid = set(list_registered().keys()) | {"all"}
         for c in cats:
             if c not in valid:
                 raise ValueError(
@@ -40,13 +31,6 @@ class AnalysisMode:
                    fix_categories=fix_categories)
 
     def build_plan(self) -> list[Analyzer]:
-        if "all" in self.categories:
-            return [LLMAnalyzer(self._adapter,
-                                fix_categories=self._fix_categories,
-                                verify_all=self._verify_all)]
-
-        analyzer_classes: set[type[Analyzer]] = set()
-        for cat in self.categories:
-            analyzer_classes.add(CATEGORY_MAP[cat])
-
-        return [cls(self._adapter) for cls in analyzer_classes]
+        return build_analyzers(self.categories, self._adapter,
+                               verify_all=self._verify_all,
+                               fix_categories=self._fix_categories)
