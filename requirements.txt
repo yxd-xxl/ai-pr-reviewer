@@ -1,0 +1,17 @@
+# Core
+pygithub>=2.0
+pyyaml>=6.0
+
+# LLM (DeepSeek via Anthropic-compatible API)
+anthropic>=0.40.0
+
+# Storage
+# sqlite3 is stdlib
+
+# CLI
+click>=8.0
+
+# Dev
+pytest>=8.0
+pytest-mock>=3.0
+python-dotenv

@@ -1,0 +1,15 @@
+review:
+  min_confidence: 0.65
+  max_inline_comments: 10
+  categories:
+    - security
+    - bug
+    - performance
+    - architecture
+    - style
+conventions:
+  - .claude/CLAUDE.md
+delivery:
+  mode: dry-run
+  inline_comments: true
+  summary_comment: true

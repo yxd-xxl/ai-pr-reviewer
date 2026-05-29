@@ -1,0 +1,59 @@
+name: AI PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run AI PR Review
+        id: review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LLM_PROVIDER: ${{ vars.LLM_PROVIDER || 'mock' }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY || '' }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL || '' }}
+          LLM_MODEL: ${{ vars.LLM_MODEL || '' }}
+        run: |
+          python -m src.cli.main review \
+            "${{ github.event.pull_request.html_url }}" \
+            -o /tmp/review.md \
+            --delivery github 2>&1 | tee /tmp/review.log
+
+      - name: Post Markdown Report as Comment
+        if: always()
+        run: |
+          if [ -f /tmp/review.md ]; then
+            echo '<!-- ai-pr-reviewer-report -->' > /tmp/comment.md
+            cat /tmp/review.md >> /tmp/comment.md
+
+            # Find and update existing report comment, or create new one
+            COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+              --jq '.[] | select(.body | contains("<!-- ai-pr-reviewer-report -->")) | .id' | head -1)
+
+            if [ -n "$COMMENT_ID" ]; then
+              gh api "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" \
+                -X PATCH -f body="$(cat /tmp/comment.md)"
+            else
+              gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+                -f body="$(cat /tmp/comment.md)"
+            fi
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

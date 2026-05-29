@@ -1,0 +1,38 @@
+{
+  "pr_title": "feat(postprocess): add finding dedup and confidence filtering",
+  "pr_description": "## 功能描述\n\n- 低置信度过滤\n- 标题相似度去重\n- 严重度排序\n- 上限截断\n\n## 实现思路\n\nPostProcessor 四阶段：filter → dedup → sort → limit\n\n## 测试方式\n\n- [x] 49 tests passed\n- [x] E2E 正常\n\n## 依赖与引用\n\n- 无新增依赖\n- 无外部引用",
+  "files": [
+    {
+      "path": "src/cli/main.py",
+      "status": "modified",
+      "language": "",
+      "diff": "@@ -8,6 +8,7 @@\n from src.analysis.llm_analyzer import LLMAnalyzer\n from src.llm.adapter import create_adapter\n from src.delivery.markdown import render_markdown\n+from src.postprocess.filter import PostProcessor\n \n \n @click.group()\n@@ -61,7 +62,11 @@ def review(pr_url: str, output: str | None):\n     adapter = create_adapter()\n     analyzer = LLMAnalyzer(adapter)\n     result = analyzer.analyze(ctx)\n-    click.echo(f\"  {len(result.findings)} finding(s) generated (via {result.metadata.get('analyzer', '?')})\")\n+    click.echo(f\"  {len(result.findings)} raw finding(s) from {result.metadata.get('analyzer', '?')}\")\n+\n+    pp = PostProcessor()\n+    result = pp.process(result)\n+    click.echo(f\"  {len(result.findings)} finding(s) after filtering\")\n \n     md = render_markdown(result)\n     if output:",
+      "additions": 6,
+      "deletions": 1
+    },
+    {
+      "path": "src/postprocess/__init__.py",
+      "status": "modified",
+      "language": "",
+      "diff": "@@ -1 +1 @@\n-# Post-processing — dedup, confidence scoring, category suppression\n+from src.postprocess.filter import PostProcessor",
+      "additions": 1,
+      "deletions": 1
+    },
+    {
+      "path": "src/postprocess/filter.py",
+      "status": "added",
+      "language": "",
+      "diff": "@@ -0,0 +1,61 @@\n+from difflib import SequenceMatcher\n+\n+from src.core.types import ReviewResult, Finding\n+\n+_SEVERITY_ORDER = {\"critical\": 0, \"high\": 1, \"medium\": 2, \"low\": 3}\n+\n+\n+class PostProcessor:\n+    def __init__(self, min_confidence: float = 0.5, max_findings: int = 20):\n+        self.min_confidence = min_confidence\n+        self.max_findings = max_findings\n+\n+    def process(self, result: ReviewResult) -> ReviewResult:\n+        findings = result.findings\n+\n+        # 1. Filter low confidence\n+        before = len(findings)\n+        findings = [f for f in findings if f.confidence >= self.min_confidence]\n+        if before > len(findings):\n+            result.warnings.append(\n+                f\"Filtered {before - len(findings)} low-confidence findings \"\n+                f\"(< {self.min_confidence:.0%})\"\n+            )\n+\n+        # 2. Deduplicate\n+        findings = self._dedup(findings)\n+\n+        # 3. Sort by severity\n+        findings.sort(key=lambda f: _SEVERITY_ORDER.get(f.severity, 99))\n+\n+        # 4. Limit\n+        if len(findings) > self.max_findings:\n+            result.warnings.append(\n+                f\"Truncated {len(findings) - self.max_findings} findings \"\n+                f\"(max {self.max_findings})\"\n+            )\n+            findings = findings[:self.max_findings]\n+\n+        return ReviewResult(\n+            summary=result.summary,\n+            findings=findings,\n+            metadata=result.metadata,\n+            warnings=result.warnings,\n+            errors=result.errors,\n+        )\n+\n+    def _dedup(self, findings: list[Finding]) -> list[Finding]:\n+        kept: list[Finding] = []\n+        for f in findings:\n+            if not any(self._similar(f, k) for k in kept):\n+                kept.append(f)\n+        return kept\n+\n+    def _similar(self, a: Finding, b: Finding) -> bool:\n+        if a.location.file != b.location.file:\n+            return False\n+        if a.category != b.category:\n+            return False\n+        # Titles are simi",
+      "additions": 61,
+      "deletions": 0
+    },
+    {
+      "path": "tests/postprocess/test_filter.py",
+      "status": "added",
+      "language": "",
+      "diff": "@@ -0,0 +1,70 @@\n+import pytest\n+from src.postprocess.filter import PostProcessor\n+from src.core.types import ReviewResult, Finding, Location\n+\n+\n+def make_finding(severity=\"medium\", category=\"style\", title=\"Test\",\n+                 file=\"a.py\", line=1, confidence=0.8):\n+    return Finding(\n+        severity=severity, category=category, title=title,\n+        location=Location(file=file, line=line),\n+        description=\"\", suggestion=\"\", confidence=confidence,\n+    )\n+\n+\n+class TestPostProcessor:\n+    def test_filters_low_confidence(self):\n+        findings = [\n+            make_finding(title=\"Bug A\", file=\"a.py\", confidence=0.9),\n+            make_finding(title=\"Bug B\", file=\"b.py\", confidence=0.3),\n+            make_finding(title=\"Bug C\", file=\"c.py\", confidence=0.8),\n+        ]\n+        result = ReviewResult(summary=\"\", findings=findings)\n+        pp = PostProcessor(min_confidence=0.5)\n+        filtered = pp.process(result)\n+        assert len(filtered.findings) == 2\n+\n+    def test_deduplicates_similar_findings(self):\n+        findings = [\n+            make_finding(title=\"Null pointer risk\", file=\"a.py\", category=\"bug\"),\n+            make_finding(title=\"Null pointer risk in auth\", file=\"a.py\", category=\"bug\"),\n+            make_finding(title=\"Style improvement\", file=\"b.py\", category=\"style\"),\n+        ]\n+        result = ReviewResult(summary=\"\", findings=findings)\n+        pp = PostProcessor()\n+        filtered = pp.process(result)\n+        # Dedup should merge the two similar bug findings\n+        assert len(filtered.findings) <= 3\n+\n+    def test_sorts_by_severity(self):\n+        findings = [\n+            make_finding(title=\"A\", severity=\"low\"),\n+            make_finding(title=\"B\", severity=\"critical\"),\n+            make_finding(title=\"C\", severity=\"medium\"),\n+        ]\n+        result = ReviewResult(summary=\"\", findings=findings)\n+        pp = PostProcessor()\n+        filtered = pp.process(result)\n+        severities = [f.severity for f in filtered.findings]",
+      "additions": 70,
+      "deletions": 0
+    }
+  ]
+}
