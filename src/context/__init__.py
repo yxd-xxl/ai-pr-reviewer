@@ -3,3 +3,5 @@ from src.context.github_client import GitHubClient
 from src.context.conventions import load_conventions
 
 from src.context.change_detector import ChangeDetector
+
+from src.context.gitlab_client import GitLabClient
