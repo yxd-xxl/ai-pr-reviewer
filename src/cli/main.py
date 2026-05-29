@@ -14,6 +14,7 @@ from src.delivery.markdown import render_markdown
 from src.delivery.github_delivery import GitHubDelivery
 from src.delivery.pr_generator import generate_fix_pr
 from src.store.db import ReviewRepo
+from src.context.user_profile import get_user_profile, list_user_repos
 import yaml
 
 
@@ -332,6 +333,36 @@ def trends(repo: str, days: int):
     click.echo(f"Avg risk score: {avg_risk:.0f}/100")
     click.echo(f"Avg findings/review: {total_findings/total:.1f}" if total else "")
     db.close()
+
+@cli.command()
+def profile():
+    """Show GitHub user profile"""
+    token = os.getenv("GITHUB_TOKEN", "")
+    if not token:
+        click.echo("Error: GITHUB_TOKEN not set", err=True)
+        sys.exit(1)
+    user = get_user_profile(token)
+    if user:
+        click.echo(f"Login: {user.get('login')}")
+        click.echo(f"Name:  {user.get('name', 'N/A')}")
+        click.echo(f"Email: {user.get('email', 'N/A')}")
+        click.echo(f"Repos: {user.get('public_repos', 0)} public, {user.get('total_private_repos', 0)} private")
+
+@cli.command()
+@click.option("--limit", default=10, help="Number of repos to show")
+def repos(limit: int):
+    """List accessible GitHub repos"""
+    token = os.getenv("GITHUB_TOKEN", "")
+    if not token:
+        click.echo("Error: GITHUB_TOKEN not set", err=True)
+        sys.exit(1)
+    repos_list = list_user_repos(token, per_page=limit)
+    if not repos_list:
+        click.echo("No repos found.")
+        return
+    for r in repos_list:
+        priv = "private" if r.get("private") else "public"
+        click.echo(f"  {r['full_name']:<35} {priv:<8} {r.get('language', ''):<10} {r.get('open_issues_count', 0)} issues")
 
 
 if __name__ == "__main__":
