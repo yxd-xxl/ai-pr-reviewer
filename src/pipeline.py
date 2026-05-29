@@ -79,6 +79,8 @@ def run_review(pr_url: str, token: str,
     if config.mode == "fast":
         categories = "security,bug" if categories == "all" else categories
     verify_all = config.mode == "deep"
+    if config.permission == "review-only":
+        config.auto_fix_categories = []  # disable fix generation
     analysis_mode = AnalysisMode.from_categories(categories, adapter, verify_all=verify_all,
                                                   fix_categories=config.auto_fix_categories)
     plan = analysis_mode.build_plan()

@@ -11,6 +11,7 @@ review:
   auto_fix_categories:
   - security
   - bug
+  permission: review-only
 conventions:
 - .claude/CLAUDE.md
 delivery:
