@@ -164,6 +164,11 @@ elif st.session_state.stage == "prs":
 elif st.session_state.stage == "analyze":
     pr_url = st.session_state.selected_pr
     token = st.session_state.token
+    mode = "balanced"
+    permission = "review-only"
+    categories = "all"
+    llm_choice = "deepseek"
+    api_key = os.getenv("LLM_API_KEY","")
 
     if st.button("Back to Review Queue"):
         st.session_state.stage = "prs"
