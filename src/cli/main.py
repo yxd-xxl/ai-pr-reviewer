@@ -312,6 +312,27 @@ def history(repo: str, limit: int):
         click.echo(f"{r['id']:<5} {r['created_at'][:19]:<20} {r['repo']:<25} {r['pr_title'][:38]:<40} {r['findings_count']:>3} {r['risk_score']:>4}")
     db.close()
 
+@cli.command()
+@click.option("--repo", default="", help="Filter by repo")
+@click.option("--days", default=30, help="Days to look back")
+def trends(repo: str, days: int):
+    """Show review quality trends"""
+    db = ReviewRepo()
+    rows = db.get_history(repo=repo, limit=100)
+    if not rows:
+        click.echo("No data.")
+        return
+
+    total = len(rows)
+    total_findings = sum(r["findings_count"] for r in rows)
+    avg_risk = sum(r["risk_score"] for r in rows) / total if total else 0
+
+    click.echo(f"Reviews: {total}")
+    click.echo(f"Total findings: {total_findings}")
+    click.echo(f"Avg risk score: {avg_risk:.0f}/100")
+    click.echo(f"Avg findings/review: {total_findings/total:.1f}" if total else "")
+    db.close()
+
 
 if __name__ == "__main__":
     cli()
