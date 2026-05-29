@@ -5,6 +5,7 @@ from src.analysis.analyzer import Analyzer
 from src.analysis.confidence import parse_confidence
 from src.analysis.prompts import build_summary_prompt, build_analysis_prompt
 from src.analysis.prompts.verify import build_verify_prompt
+from src.analysis.prompts.fix import build_fix_prompt
 from src.llm import LLMAdapter
 from src.security.bandit_runner import run_bandit
 
@@ -77,6 +78,19 @@ class LLMAnalyzer(Analyzer):
             if f not in to_verify:
                 verified.append(f)
 
+        # Stage 4: Generate fix patches (parallel, for medium+)
+        fixable = [f for f in verified
+                   if f.severity in ('critical', 'high', 'medium')]
+        if fixable:
+            with ThreadPoolExecutor(max_workers=min(4, len(fixable))) as pool:
+                futures = {pool.submit(self._generate_fix, f, context): f
+                          for f in fixable}
+                for fut in as_completed(futures):
+                    try:
+                        pass  # _generate_fix modifies f.fix_patch in place
+                    except Exception:
+                        pass
+
         return ReviewResult(
             summary=summary,
             findings=verified,
@@ -131,3 +145,25 @@ class LLMAnalyzer(Analyzer):
             return verified, conf, reason
         except Exception:
             return True, finding.confidence, "verification skipped"
+
+    def _generate_fix(self, finding, ctx):
+        """Generate fix patch for a finding. Modifies finding.fix_patch."""
+        import src.env
+        fc_match = None
+        for fc in ctx.files:
+            if fc.path == finding.location.file:
+                fc_match = fc
+                break
+        if fc_match is None:
+            return
+        code = fc_match.full_content or fc_match.diff
+        if not code:
+            return
+        try:
+            system, user = build_fix_prompt(finding, code, fc_match.language)
+            data = self._adapter.complete_json(system=system, user=user)
+            patch = data.get('patch', '')
+            if patch and patch.strip():
+                finding.fix_patch = patch.strip()
+        except Exception:
+            pass
