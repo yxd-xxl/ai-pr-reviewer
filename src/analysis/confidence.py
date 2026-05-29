@@ -11,9 +11,3 @@ def parse_confidence(raw) -> float:
         return val / 100.0
     return val
 
-
-def normalize_threshold(threshold: float) -> float:
-    """Ensure threshold is in 0-1 range for internal comparisons."""
-    if threshold > 1.0:
-        return threshold / 100.0
-    return threshold
