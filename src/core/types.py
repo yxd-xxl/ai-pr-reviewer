@@ -82,6 +82,7 @@ class Finding:
     confidence: float     # 0.0 ~ 1.0 (prompt uses 0/25/50/75/100)
     classification: str = "new"  # new | preexisting | nit
     evidence: str | None = None
+    fix_patch: str | None = None  # generated unified diff for fix
     rule_id: str | None = None
     analyzer: str | None = None
 

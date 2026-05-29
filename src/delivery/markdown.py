@@ -42,6 +42,13 @@ def render_markdown(result: ReviewResult) -> str:
                 lines.append("")
             lines.append(f"**Suggestion:** {f.suggestion}")
             lines.append("")
+            if f.fix_patch:
+                lines.append("**Suggested Fix (diff):**")
+                lines.append("")
+                lines.append("```diff")
+                lines.append(f.fix_patch)
+                lines.append("```")
+                lines.append("")
     else:
         lines.append("No findings.")
         lines.append("")
