@@ -1,6 +1,7 @@
 from difflib import SequenceMatcher
 
 from src.core.types import ReviewResult, Finding
+from src.feedback.tracker import FeedbackTracker
 
 _SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 
@@ -37,10 +38,23 @@ class PostProcessor:
                 f"Degraded {no_evidence} finding(s) without evidence (-0.3 confidence)"
             )
 
-        # 4. Deduplicate
+        # 4. Feedback gate: degrade known false positives
+        tracker = FeedbackTracker()
+        fp_degraded = 0
+        for f in findings:
+            if tracker.is_known_fp(f):
+                f.confidence = max(0, f.confidence - 0.4)
+                f.classification = "preexisting"
+                fp_degraded += 1
+        if fp_degraded:
+            warnings.append(
+                f"Degraded {fp_degraded} known false positive(s) (-0.4 confidence)"
+            )
+
+        # 5. Deduplicate
         findings = self._dedup(findings)
 
-        # 5. Re-filter after evidence degradation
+        # 6. Re-filter
         before_evidence = len(findings)
         findings = [f for f in findings if f.confidence >= self.min_confidence]
         if before_evidence > len(findings):
@@ -49,7 +63,7 @@ class PostProcessor:
                 f"after evidence gate"
             )
 
-        # 6. Limit
+        # 7. Limit
         if len(findings) > self.max_findings:
             warnings.append(
                 f"Truncated {len(findings) - self.max_findings} findings "
