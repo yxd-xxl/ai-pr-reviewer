@@ -84,3 +84,11 @@ def load_config(path: str | None = None) -> ReviewConfig:
             summary_comment=delivery_data.get("summary_comment", DEFAULT_CONFIG.delivery.summary_comment),
         ),
     )
+
+
+def load_for_repo(owner: str, repo: str) -> ReviewConfig:
+    """Load config with per-repo override."""
+    repo_path = f".ai-pr-reviewer/{owner}_{repo}.yml"
+    if Path(repo_path).exists():
+        return load_config(repo_path)
+    return load_config()
