@@ -8,6 +8,7 @@ from src.pipeline import run_review
 from src.feedback.tracker import FeedbackTracker
 from src.core.config import ReviewConfig
 from src.context.user_profile import get_user_profile, list_user_repos
+from src.context.change_detector import ChangeDetector
 
 
 st.set_page_config(page_title="AI PR Reviewer", layout="wide")
@@ -94,20 +95,50 @@ elif st.session_state.stage == "repos":
                     st.session_state.stage = "prs"
                     st.rerun()
 
-# ── Stage 3: PR List ────────────────────────
+# ── Stage 3: Review Queue ─────────────────
 
 elif st.session_state.stage == "prs":
     owner, repo = st.session_state.selected_repo.split("/")
-    st.title(f"{owner}/{repo}")
+    st.title(f"{owner}/{repo} — Review Queue")
 
-    c1, c2 = st.columns([1, 3])
-    with c1:
-        if st.button("Back to repos"):
-            st.session_state.stage = "repos"; st.rerun()
-    with c2:
-        pr_state = st.selectbox("Status", ["open", "closed", "all"], index=2)
+    if st.button("Back to repos"):
+        st.session_state.stage = "repos"; st.rerun()
+    st.divider()
+
+    # Section 1: Unreviewed Changes (auto-detection)
+    st.subheader("Unreviewed Changes")
+    detector = ChangeDetector()
+    should_review, head_sha, commit_count = detector.check(owner, repo, st.session_state.token)
+    if head_sha:
+        if commit_count > 0:
+            cols = st.columns([3, 1])
+            with cols[0]:
+                st.markdown(f"**{commit_count} new commit(s)** since last review")
+                st.caption(f"HEAD: {head_sha[:7]}")
+            with cols[1]:
+                if should_review:
+                    st.success(f"Threshold met ({commit_count} commits)")
+                else:
+                    st.info(f"Below threshold ({commit_count} < 3)")
+                if st.button("Review Changes", key="review_changes", type="primary"):
+                    # Find open PRs or use the latest commit context
+                    prs = fetch_prs(owner, repo, st.session_state.token, state="open", limit=1)
+                    if prs:
+                        st.session_state.selected_pr = prs[0]["html_url"]
+                    else:
+                        st.session_state.selected_pr = f"https://github.com/{owner}/{repo}"
+                    st.session_state.stage = "analyze"
+                    st.rerun()
+        else:
+            st.caption("No new commits since last review.")
+    else:
+        st.caption("Unable to check for changes.")
 
     st.divider()
+
+    # Section 2: Pull Requests
+    st.subheader("Pull Requests")
+    pr_state = st.selectbox("Filter", ["open", "closed", "all"], index=2, key="pr_filter")
 
     with st.spinner(f"Loading {pr_state} PRs..."):
         prs = fetch_prs(owner, repo, st.session_state.token, state=pr_state)
@@ -115,7 +146,7 @@ elif st.session_state.stage == "prs":
     if not prs:
         st.info(f"No {pr_state} PRs found.")
     else:
-        st.markdown(f"### {len(prs)} PRs ({pr_state})")
+        st.caption(f"{len(prs)} PRs — click to review")
         for i, pr in enumerate(prs):
             cols = st.columns([3, 1, 0.8])
             with cols[0]:
@@ -125,7 +156,7 @@ elif st.session_state.stage == "prs":
             with cols[1]:
                 st.markdown(f"{pr.get('comments',0)} comments")
             with cols[2]:
-                if st.button("Analyze", key=f"sel_{i}"):
+                if st.button("Review", key=f"sel_{i}"):
                     st.session_state.selected_pr = pr["html_url"]
                     st.session_state.stage = "analyze"
                     st.rerun()
