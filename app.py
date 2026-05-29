@@ -121,13 +121,10 @@ elif st.session_state.stage == "prs":
                 else:
                     st.info(f"Below threshold ({commit_count} < 3)")
                 if st.button("Review Changes", key="review_changes", type="primary"):
-                    prs = fetch_prs(owner, repo, st.session_state.token, state="open", limit=1)
-                    if prs:
-                        st.session_state.selected_pr = prs[0]["html_url"]
-                    else:
-                        # No open PR — create one from the diff context
-                        st.session_state.selected_pr = "auto"  # signal: auto-detect mode
-                        st.session_state.auto_repo = f"{owner}/{repo}"
+                    st.session_state.auto_owner = owner
+                    st.session_state.auto_repo = repo
+                    st.session_state.auto_sha = head_sha
+                    st.session_state.selected_pr = "auto"
                     st.session_state.stage = "analyze"
                     st.rerun()
         else:
@@ -175,8 +172,59 @@ elif st.session_state.stage == "analyze":
         st.rerun()
 
     if pr_url == "auto":
-        st.info("Reviewing uncommitted changes — run CLI: python -m src.cli.main auto " + st.session_state.get("auto_repo", ""))
-        st.stop()
+        owner_repo = f"{st.session_state.get('auto_owner','')}/{st.session_state.get('auto_repo','')}"
+        st.info(f"Analyzing unreviewed changes in {owner_repo}...")
+
+        # Get diff between last reviewed SHA and HEAD
+        from src.context.github_client import GitHubClient
+        from src.context.review_state import ReviewState
+        from src.core.types import PullRequest, ReviewContext, FileChange
+        from src.context.diff_parser import parse_unified_diff
+        import urllib.request as _ur2
+
+        client = GitHubClient(token)
+        state = ReviewState()
+        last_sha = state.last_reviewed_sha(0) or ""
+        head_sha = st.session_state.get("auto_sha", "")
+
+        if head_sha and last_sha != head_sha:
+            # Fetch diff via GitHub compare API
+            diff_url = f"https://api.github.com/repos/{st.session_state.auto_owner}/{st.session_state.auto_repo}/compare/{last_sha}...{head_sha}"
+            req = _ur2.Request(diff_url, headers={"Authorization": f"Bearer {token}",
+                                                     "Accept": "application/vnd.github.diff",
+                                                     "User-Agent": "ai-pr-reviewer"})
+            try:
+                with _ur2.urlopen(req, timeout=15) as resp:
+                    diff_text = resp.read().decode("utf-8", errors="replace")
+                files = parse_unified_diff(diff_text)
+                pr = PullRequest(
+                    owner=st.session_state.auto_owner, repo=st.session_state.auto_repo,
+                    number=0, title=f"Unreviewed changes ({head_sha[:7]})",
+                    description=f"Changes since {last_sha[:7]}",
+                    url=f"https://github.com/{st.session_state.auto_owner}/{st.session_state.auto_repo}",
+                    base_branch="main", head_branch="HEAD",
+                    base_sha=last_sha, head_sha=head_sha,
+                )
+                from src.pipeline import run_review
+                from src.core.config import ReviewConfig
+                config = ReviewConfig(mode=mode, permission=permission)
+                llm_cfg = None
+                if llm_choice != "mock" and api_key:
+                    llm_cfg = {"provider": llm_choice, "api_key": api_key,
+                              "base_url": os.getenv("LLM_BASE_URL","https://api.deepseek.com"),
+                              "model": os.getenv("LLM_MODEL","deepseek-chat")}
+                result_pr, result_files, result = run_review(
+                    f"https://github.com/{st.session_state.auto_owner}/{st.session_state.auto_repo}/pull/1",
+                    token, llm_config=llm_cfg, categories=categories, config=config)
+                # Override PR info with actual auto-detect data
+                result_pr = pr
+                st.session_state.last_result = (result_pr, files, result)
+            except Exception as e2:
+                st.error(f"Auto review failed: {e2}")
+                st.stop()
+        else:
+            st.info("No new changes since last review.")
+            st.stop()
 
     if not pr_url:
         st.info("No PR selected.")
