@@ -5,12 +5,15 @@ import os
 import streamlit as st
 
 from src.pipeline import run_review
+from src.store.db import ReviewRepo
 from src.delivery.markdown import render_markdown
 from src.delivery.github_delivery import GitHubDelivery
 
 
 st.set_page_config(page_title="AI PR Reviewer", layout="wide")
 st.title("AI PR Reviewer")
+
+tab = st.sidebar.radio("View", ["Analyze", "History"], index=0)
 
 # ── Sidebar ──────────────────────────────────
 
@@ -58,7 +61,8 @@ if llm_provider != "mock":
 
 # ── Main ─────────────────────────────────────
 
-pr_url = st.text_input("PR URL", placeholder="https://github.com/owner/repo/pull/42")
+if tab == "Analyze":
+    pr_url = st.text_input("PR URL", placeholder="https://github.com/owner/repo/pull/42")
 
 col1, col2 = st.columns([3, 1])
 with col2:
@@ -179,3 +183,25 @@ if st.button("Analyze", type="primary", disabled=not token or not pr_url):
         )
         st.caption(f"Analyzer: {result.metadata.get('analyzer', '?')} · "
                    f"Model: {result.metadata.get('model', '?')}")
+
+
+if tab == "History":
+    st.subheader("Review History")
+    db = ReviewRepo()
+    rows = db.get_history(limit=30)
+    if not rows:
+        st.info("No review history yet. Run an analysis first.")
+    else:
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Total Reviews", len(rows))
+        c2.metric("Total Findings", sum(r["findings_count"] for r in rows))
+        avg = sum(r["risk_score"] for r in rows) / len(rows) if len(rows) else 0
+        c3.metric("Avg Risk", f"{avg:.0f}/100")
+        st.divider()
+        for r in rows:
+            with st.expander(f"{r['pr_title'][:80]} | {r['findings_count']} findings | risk {r['risk_score']}"):
+                st.caption(f"{r['repo']} | {r['created_at'][:19]}")
+                st.markdown(f"[Open PR]({r['pr_url']})")
+                for f in db.get_findings(r["id"]):
+                    st.markdown(f"- **[{f['severity']}]** {f['title']} (`{f['file']}`)")
+        db.close()
