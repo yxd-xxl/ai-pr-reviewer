@@ -1,0 +1,10 @@
+{
+  "pr_url": "https://github.com/yxd-xxl/ai-pr-reviewer-legacy/pull/30",
+  "category": "failure",
+  "expected_titles": [
+    "partial",
+    "failure",
+    "exception"
+  ],
+  "forbidden_titles": []
+}

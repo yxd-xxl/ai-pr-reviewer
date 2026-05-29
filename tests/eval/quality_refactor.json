@@ -1,0 +1,10 @@
+{
+  "pr_url": "https://github.com/yxd-xxl/ai-pr-reviewer-legacy/pull/23",
+  "category": "quality",
+  "expected_titles": [
+    "split",
+    "module",
+    "boundary"
+  ],
+  "forbidden_titles": []
+}

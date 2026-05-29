@@ -1,0 +1,12 @@
+{
+  "pr_url": "https://github.com/yxd-xxl/ai-pr-reviewer-legacy/pull/19",
+  "category": "security",
+  "expected_titles": [
+    "Bandit",
+    "SAST"
+  ],
+  "forbidden_titles": [
+    "Missing import",
+    "unused import"
+  ]
+}

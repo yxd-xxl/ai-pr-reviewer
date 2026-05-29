@@ -1,0 +1,12 @@
+{
+  "pr_url": "https://github.com/yxd-xxl/ai-pr-reviewer-legacy/pull/7",
+  "category": "bug",
+  "expected_titles": [
+    "Weak dedup",
+    "assertion",
+    "O(n^2)"
+  ],
+  "forbidden_titles": [
+    "Missing import for PostProcessor"
+  ]
+}
