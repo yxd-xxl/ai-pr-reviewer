@@ -6,6 +6,7 @@ from src.analysis.confidence import parse_confidence
 from src.analysis.prompts import build_summary_prompt, build_analysis_prompt
 from src.analysis.prompts.verify import build_verify_prompt
 from src.analysis.prompts.fix import build_fix_prompt
+from src.analysis.prompts.verify_fix import build_verify_fix_prompt
 from src.llm import LLMAdapter
 from src.security.bandit_runner import run_bandit
 
@@ -91,6 +92,15 @@ class LLMAnalyzer(Analyzer):
                     except Exception:
                         pass
 
+        # Stage 5: Verify generated fixes
+        patched = [f for f in verified if f.fix_patch]
+        if patched:
+            for f in patched:
+                try:
+                    self._verify_fix(f, context)
+                except Exception:
+                    pass
+
         return ReviewResult(
             summary=summary,
             findings=verified,
@@ -165,5 +175,28 @@ class LLMAnalyzer(Analyzer):
             patch = data.get('patch', '')
             if patch and patch.strip():
                 finding.fix_patch = patch.strip()
+        except Exception:
+            pass
+
+    def _verify_fix(self, finding, ctx):
+        """Verify a generated fix patch. Modifies finding.fix_verified."""
+        fc_match = None
+        for fc in ctx.files:
+            if fc.path == finding.location.file:
+                fc_match = fc
+                break
+        if fc_match is None:
+            return
+        code = fc_match.full_content or fc_match.diff
+        if not code:
+            return
+        try:
+            system, user = build_verify_fix_prompt(finding, code, fc_match.language)
+            data = self._adapter.complete_json(system=system, user=user)
+            finding.fix_verified = data.get('verified', False)
+            finding.fix_verification_note = data.get('suggestion', '') or data.get('issues', '')
+            if not finding.fix_verified:
+                finding.fix_verification_note = data.get('issues', 'Fix could not be verified')
+                finding.confidence = max(0, finding.confidence - 0.15)
         except Exception:
             pass
