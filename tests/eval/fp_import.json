@@ -1,0 +1,10 @@
+{
+  "pr_url": "https://github.com/yxd-xxl/ai-pr-reviewer-legacy/pull/39",
+  "category": "bug",
+  "expected_titles": [],
+  "forbidden_titles": [
+    "Missing import",
+    "unused import",
+    "import statement"
+  ]
+}

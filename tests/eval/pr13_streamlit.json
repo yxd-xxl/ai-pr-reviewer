@@ -1,7 +1,10 @@
 {
   "pr_url": "https://github.com/yxd-xxl/ai-pr-reviewer/pull/13",
   "category": "bug",
-  "expected_files": ["app.py", "src/pipeline.py"],
+  "expected_files": [
+    "app.py",
+    "src/pipeline.py"
+  ],
   "expected_titles": [
     "LLM provider selection",
     "Unused import"

@@ -1,0 +1,9 @@
+{
+  "pr_url": "https://github.com/yxd-xxl/ai-pr-reviewer-legacy/pull/13",
+  "category": "bug",
+  "expected_titles": [
+    "LLM provider",
+    "Unused import"
+  ],
+  "forbidden_titles": []
+}

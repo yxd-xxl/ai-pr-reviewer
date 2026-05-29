@@ -1,0 +1,9 @@
+{
+  "pr_url": "https://github.com/yxd-xxl/ai-pr-reviewer-legacy/pull/33",
+  "category": "performance",
+  "expected_titles": [
+    "parallel",
+    "concurrent"
+  ],
+  "forbidden_titles": []
+}

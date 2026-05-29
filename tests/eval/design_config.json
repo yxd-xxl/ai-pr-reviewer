@@ -1,0 +1,9 @@
+{
+  "pr_url": "https://github.com/yxd-xxl/ai-pr-reviewer-legacy/pull/15",
+  "category": "design",
+  "expected_titles": [
+    "config",
+    "YAML"
+  ],
+  "forbidden_titles": []
+}

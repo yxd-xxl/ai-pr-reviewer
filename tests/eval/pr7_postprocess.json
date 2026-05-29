@@ -1,7 +1,10 @@
 {
   "pr_url": "https://github.com/yxd-xxl/ai-pr-reviewer/pull/7",
   "category": "bug",
-  "expected_files": ["src/postprocess/filter.py", "tests/postprocess/test_filter.py"],
+  "expected_files": [
+    "src/postprocess/filter.py",
+    "tests/postprocess/test_filter.py"
+  ],
   "expected_titles": [
     "Weak dedup assertion",
     "O(n^2) deduplication",

@@ -75,6 +75,16 @@ def compute_metrics(cases: list[EvalCase],
     )
 
 
+_PERSPECTIVE_LABELS = {
+    "security": "1.Security",
+    "bug": "2.Logic&Bugs", 
+    "performance": "3.Performance",
+    "quality": "4.Quality&Tests",
+    "failure": "5.FailureModes",
+    "design": "6.DesignResilience",
+}
+
+
 def per_category_summary(cases: list[EvalCase],
                          results: list[EvalResult]) -> str:
     by_cat: dict[str, dict] = {}
