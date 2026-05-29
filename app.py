@@ -121,11 +121,60 @@ elif st.session_state.stage == "prs":
                 else:
                     st.info(f"Below threshold ({commit_count} < 3)")
                 if st.button("Review Changes", key="review_changes", type="primary"):
-                    st.session_state.auto_owner = owner
-                    st.session_state.auto_repo = repo
-                    st.session_state.auto_sha = head_sha
-                    st.session_state.selected_pr = "auto"
-                    st.session_state.stage = "analyze"
+                    with st.spinner("Analyzing unreviewed changes..."):
+                        st.session_state.auto_owner = owner
+                        st.session_state.auto_repo = repo
+                        st.session_state.auto_sha = head_sha
+                        # Run analysis inline
+                        from src.context.github_client import GitHubClient
+                        from src.context.review_state import ReviewState
+                        from src.context.diff_parser import parse_unified_diff
+                        import urllib.request as _ur3
+                        client2 = GitHubClient(st.session_state.token)
+                        state2 = ReviewState()
+                        last_sha = state2.last_reviewed_sha(0) or ""
+                        diff_text = ""
+                        if last_sha:
+                            url2 = f"https://api.github.com/repos/{owner}/{repo}/compare/{last_sha}...{head_sha}"
+                        else:
+                            url2 = f"https://api.github.com/repos/{owner}/{repo}/commits/{head_sha}"
+                        req2 = _ur3.Request(url2, headers={"Authorization": f"Bearer {st.session_state.token}",
+                                                             "Accept": "application/vnd.github.diff",
+                                                             "User-Agent": "ai-pr-reviewer"})
+                        try:
+                            with _ur3.urlopen(req2, timeout=15) as resp:
+                                diff_text = resp.read().decode("utf-8", errors="replace")
+                        except Exception as e2:
+                            st.error(f"Failed to fetch diff: {e2}")
+                            st.stop()
+                        if not diff_text.strip():
+                            st.info("No changes to review.")
+                            st.stop()
+                        files = parse_unified_diff(diff_text)
+                        from src.core.types import PullRequest
+                        pr = PullRequest(
+                            owner=owner, repo=repo, number=0,
+                            title=f"Unreviewed changes ({head_sha[:7]})",
+                            description=f"Changes since {last_sha[:7] if last_sha else 'initial'}",
+                            url=f"https://github.com/{owner}/{repo}",
+                            base_branch="main", head_branch="HEAD",
+                            base_sha=last_sha, head_sha=head_sha,
+                        )
+                        from src.pipeline import run_review
+                        from src.core.config import ReviewConfig
+                        config = ReviewConfig(mode="balanced", permission="review-only")
+                        llm_cfg = {"provider": "deepseek", "api_key": os.getenv("LLM_API_KEY",""),
+                                  "base_url": os.getenv("LLM_BASE_URL","https://api.deepseek.com"),
+                                  "model": os.getenv("LLM_MODEL","deepseek-chat")}
+                        try:
+                            _, _, auto_result = run_review(
+                                f"https://github.com/{owner}/{repo}/pull/1",
+                                st.session_state.token, llm_config=llm_cfg,
+                                categories="all", config=config)
+                            st.session_state.auto_result = (pr, files, auto_result)
+                        except Exception as e3:
+                            st.error(f"Analysis failed: {e3}")
+                            st.stop()
                     st.rerun()
         else:
             st.caption("No new commits since last review.")
