@@ -105,85 +105,97 @@ elif st.session_state.stage == "prs":
         st.session_state.stage = "repos"; st.rerun()
     st.divider()
 
-    # Section 1: Unreviewed Changes (auto-detection)
-    st.subheader("Unreviewed Changes")
+        # Section 1: Auto Review (runs on page load — no button needed)
+    st.subheader("Auto Review")
     detector = ChangeDetector()
     should_review, head_sha, commit_count = detector.check(owner, repo, st.session_state.token)
-    if head_sha:
-        if commit_count > 0:
-            cols = st.columns([3, 1])
-            with cols[0]:
-                st.markdown(f"**{commit_count} new commit(s)** since last review")
-                st.caption(f"HEAD: {head_sha[:7]}")
-            with cols[1]:
-                if should_review:
-                    st.success(f"Threshold met ({commit_count} commits)")
-                else:
-                    st.info(f"Below threshold ({commit_count} < 3)")
-                if st.button("Review Changes", key="review_changes", type="primary"):
-                    with st.spinner("Analyzing unreviewed changes..."):
-                        st.session_state.auto_owner = owner
-                        st.session_state.auto_repo = repo
-                        st.session_state.auto_sha = head_sha
-                        # Run analysis inline
-                        from src.context.github_client import GitHubClient
-                        from src.context.review_state import ReviewState
-                        from src.context.diff_parser import parse_unified_diff
-                        import urllib.request as _ur3
-                        client2 = GitHubClient(st.session_state.token)
-                        state2 = ReviewState()
-                        last_sha = state2.last_reviewed_sha(0) or ""
-                        diff_text = ""
-                        if last_sha:
-                            url2 = f"https://api.github.com/repos/{owner}/{repo}/compare/{last_sha}...{head_sha}"
-                        else:
-                            url2 = f"https://api.github.com/repos/{owner}/{repo}/commits/{head_sha}"
-                        req2 = _ur3.Request(url2, headers={"Authorization": f"Bearer {st.session_state.token}",
-                                                             "Accept": "application/vnd.github.diff",
-                                                             "User-Agent": "ai-pr-reviewer"})
-                        try:
-                            with _ur3.urlopen(req2, timeout=15) as resp:
-                                diff_text = resp.read().decode("utf-8", errors="replace")
-                        except Exception as e2:
-                            st.error(f"Failed to fetch diff: {e2}")
-                            st.stop()
-                        if not diff_text.strip():
-                            st.info("No changes to review.")
-                            st.stop()
-                        files = parse_unified_diff(diff_text)
-                        from src.core.types import PullRequest
-                        pr = PullRequest(
-                            owner=owner, repo=repo, number=0,
-                            title=f"Unreviewed changes ({head_sha[:7]})",
-                            description=f"Changes since {last_sha[:7] if last_sha else 'initial'}",
-                            url=f"https://github.com/{owner}/{repo}",
-                            base_branch="main", head_branch="HEAD",
-                            base_sha=last_sha, head_sha=head_sha,
-                        )
-                        from src.pipeline import run_review
-                        from src.core.config import ReviewConfig
-                        config = ReviewConfig(mode="balanced", permission="review-only")
-                        llm_cfg = {"provider": "deepseek", "api_key": os.getenv("LLM_API_KEY",""),
-                                  "base_url": os.getenv("LLM_BASE_URL","https://api.deepseek.com"),
-                                  "model": os.getenv("LLM_MODEL","deepseek-chat")}
-                        try:
-                            _, _, auto_result = run_review(
-                                f"https://github.com/{owner}/{repo}/pull/1",
-                                st.session_state.token, llm_config=llm_cfg,
-                                categories="all", config=config)
-                            st.session_state.auto_result = (pr, files, auto_result)
-                        except Exception as e3:
-                            st.error(f"Analysis failed: {e3}")
-                            st.stop()
+
+    if head_sha and commit_count > 0 and should_review:
+        auto_key = f"auto_{owner}_{repo}_{head_sha}"
+        if auto_key not in st.session_state:
+            st.session_state[auto_key] = "pending"
+        if st.session_state[auto_key] == "pending":
+            st.session_state[auto_key] = "analyzing"
+            with st.spinner(f"Auto-analyzing {commit_count} new commit(s)..."):
+                from src.context.github_client import GitHubClient
+                from src.context.review_state import ReviewState
+                from src.context.diff_parser import parse_unified_diff
+                import urllib.request as _ur3
+                state2 = ReviewState()
+                last_sha = state2.last_reviewed_sha(0) or ""
+                diff_text = ""
+                try:
+                    if last_sha:
+                        u = f"https://api.github.com/repos/{owner}/{repo}/compare/{last_sha}...{head_sha}"
+                    else:
+                        u = f"https://api.github.com/repos/{owner}/{repo}/commits/{head_sha}"
+                    r = _ur3.Request(u, headers={"Authorization": f"Bearer {st.session_state.token}",
+                                                   "Accept": "application/vnd.github.diff",
+                                                   "User-Agent": "ai-pr-reviewer"})
+                    with _ur3.urlopen(r, timeout=15) as resp:
+                        diff_text = resp.read().decode("utf-8", errors="replace")
+                except Exception:
+                    st.session_state[auto_key] = "error:diff fetch failed"
                     st.rerun()
-        else:
-            st.caption("No new commits since last review.")
+                if diff_text.strip():
+                    files = parse_unified_diff(diff_text)
+                    from src.core.types import PullRequest
+                    pr = PullRequest(owner=owner, repo=repo, number=0,
+                        title=f"Unreviewed changes ({head_sha[:7]})",
+                        url=f"https://github.com/{owner}/{repo}",
+                        base_branch="main", head_branch="HEAD",
+                        base_sha=last_sha, head_sha=head_sha)
+                    from src.pipeline import run_review
+                    from src.core.config import ReviewConfig
+                    config = ReviewConfig(mode="balanced", permission="review-only")
+                    ak = os.getenv("LLM_API_KEY","")
+                    llm_cfg = {"provider":"deepseek","api_key":ak,
+                              "base_url":os.getenv("LLM_BASE_URL","https://api.deepseek.com"),
+                              "model":os.getenv("LLM_MODEL","deepseek-chat")}
+                    try:
+                        _, _, auto_r = run_review(f"https://github.com/{owner}/{repo}/pull/1",
+                            st.session_state.token, llm_config=llm_cfg,
+                            categories="all", config=config)
+                        st.session_state[auto_key] = (pr, files, auto_r)
+                        ReviewState().mark_reviewed(0, head_sha, len(auto_r.findings))
+                    except Exception as e3:
+                        st.session_state[auto_key] = f"error:{e3}"
+                else:
+                    st.session_state[auto_key] = "empty"
+            st.rerun()
+
+        result_data = st.session_state[auto_key]
+        if isinstance(result_data, tuple):
+            pr, files, result = result_data
+            st.success(f"Auto-reviewed {commit_count} commit(s) - {len(result.findings)} findings")
+            sev = {}
+            for f in result.findings:
+                sev[f.severity] = sev.get(f.severity, 0) + 1
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Files", len(files))
+            c2.metric("Findings", len(result.findings))
+            risk = sum(sev.get(s,0)*{"critical":4,"high":3,"medium":2,"low":1}.get(s,1) for s in sev)
+            c3.metric("Risk", risk)
+            with st.expander("Summary", expanded=True):
+                st.markdown(result.summary)
+            for f in result.findings:
+                st.markdown(f"- **[{f.severity.upper()}]** {f.title} (`{f.location.file}`)")
+            if st.button("Re-run Auto Review"):
+                del st.session_state[auto_key]
+                st.rerun()
+        elif isinstance(result_data, str) and result_data.startswith("error"):
+            st.error(f"Auto review failed: {result_data[6:]}")
+            if st.button("Retry"):
+                del st.session_state[auto_key]
+                st.rerun()
+        elif result_data == "analyzing":
+            st.info("Analyzing...")
+    elif head_sha:
+        st.caption("No new commits since last auto-review.")
     else:
         st.caption("Unable to check for changes.")
 
-    st.divider()
-
-    # Section 2: Pull Requests
+# Section 2: Pull Requests
     st.subheader("Pull Requests")
     pr_state = st.selectbox("Filter", ["open", "closed", "all"], index=2, key="pr_filter")
 
