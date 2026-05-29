@@ -30,15 +30,15 @@ class TestParsePrUrl:
         assert result.number == 42
 
     def test_invalid_url_not_github(self):
-        with pytest.raises(ValueError, match="Invalid GitHub PR URL"):
+        with pytest.raises(ValueError, match="Invalid PR/MR URL"):
             parse_pr_url("https://gitlab.com/owner/repo/pull/42")
 
     def test_invalid_url_no_pull(self):
-        with pytest.raises(ValueError, match="Invalid GitHub PR URL"):
+        with pytest.raises(ValueError, match="Invalid PR/MR URL"):
             parse_pr_url("https://github.com/owner/repo/issues/42")
 
     def test_invalid_url_missing_number(self):
-        with pytest.raises(ValueError, match="Invalid GitHub PR URL"):
+        with pytest.raises(ValueError, match="Invalid PR/MR URL"):
             parse_pr_url("https://github.com/owner/repo/pull/")
 
     def test_repo_with_dots(self):
