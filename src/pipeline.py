@@ -75,16 +75,20 @@ def run_review(pr_url: str, token: str,
     t2 = time.time()
     ctx = ReviewContext(pr=pr, files=files, conventions=conventions)
     adapter = create_adapter()
-    mode = AnalysisMode.from_categories(categories, adapter)
-    plan = mode.build_plan()
+    # Mode-based strategy
+    if config.mode == "fast":
+        categories = "security,bug" if categories == "all" else categories
+    analysis_mode = AnalysisMode.from_categories(categories, adapter)
+    plan = analysis_mode.build_plan()
     analyzer = CompositeAnalyzer(plan) if len(plan) > 1 else plan[0]
     result = analyzer.analyze(ctx)
     timing["analyze"] = round(time.time() - t2, 2)
 
     t3 = time.time()
+    max_f = {"fast": 5, "balanced": config.max_inline_comments, "deep": 20}.get(config.mode, config.max_inline_comments)
     pp = PostProcessor(
         min_confidence=config.min_confidence,
-        max_findings=config.max_inline_comments,
+        max_findings=max_f,
     )
     result = pp.process(result)
     timing["postprocess"] = round(time.time() - t3, 2)

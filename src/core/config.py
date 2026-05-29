@@ -17,10 +17,14 @@ class DeliveryConfig:
 
 @dataclass
 class ReviewConfig:
+    mode: str = "balanced"
     min_confidence: float = 0.65
     max_inline_comments: int = 10
     categories: list[str] = field(default_factory=lambda: [
         "security", "bug", "performance", "architecture", "style",
+    ])
+    auto_fix_categories: list[str] = field(default_factory=lambda: [
+        "security", "bug",
     ])
     conventions: list[str] = field(default_factory=lambda: [
         ".claude/CLAUDE.md",
@@ -28,6 +32,8 @@ class ReviewConfig:
     delivery: DeliveryConfig = field(default_factory=DeliveryConfig)
 
     def __post_init__(self):
+        if self.mode not in ("fast", "balanced", "deep"):
+            raise ValueError(f"review.mode must be fast/balanced/deep, got '{self.mode}'")
         if not 0.0 <= self.min_confidence <= 1.0:
             raise ValueError(
                 f"min_confidence must be 0.0-1.0, got {self.min_confidence}"
@@ -62,7 +68,9 @@ def load_config(path: str | None = None) -> ReviewConfig:
     delivery_data = data.get("delivery", {})
 
     return ReviewConfig(
+        mode=review_data.get("mode", DEFAULT_CONFIG.mode),
         min_confidence=review_data.get("min_confidence", DEFAULT_CONFIG.min_confidence),
+        auto_fix_categories=review_data.get("auto_fix_categories", DEFAULT_CONFIG.auto_fix_categories),
         max_inline_comments=review_data.get("max_inline_comments", DEFAULT_CONFIG.max_inline_comments),
         categories=review_data.get("categories", DEFAULT_CONFIG.categories),
         conventions=data.get("conventions", DEFAULT_CONFIG.conventions),

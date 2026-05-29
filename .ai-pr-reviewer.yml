@@ -2,13 +2,17 @@ review:
   min_confidence: 0.65
   max_inline_comments: 10
   categories:
-    - security
-    - bug
-    - performance
-    - architecture
-    - style
+  - security
+  - bug
+  - performance
+  - architecture
+  - style
+  mode: balanced
+  auto_fix_categories:
+  - security
+  - bug
 conventions:
-  - .claude/CLAUDE.md
+- .claude/CLAUDE.md
 delivery:
   mode: dry-run
   inline_comments: true
