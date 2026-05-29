@@ -121,12 +121,13 @@ elif st.session_state.stage == "prs":
                 else:
                     st.info(f"Below threshold ({commit_count} < 3)")
                 if st.button("Review Changes", key="review_changes", type="primary"):
-                    # Find open PRs or use the latest commit context
                     prs = fetch_prs(owner, repo, st.session_state.token, state="open", limit=1)
                     if prs:
                         st.session_state.selected_pr = prs[0]["html_url"]
                     else:
-                        st.session_state.selected_pr = f"https://github.com/{owner}/{repo}"
+                        # No open PR — create one from the diff context
+                        st.session_state.selected_pr = "auto"  # signal: auto-detect mode
+                        st.session_state.auto_repo = f"{owner}/{repo}"
                     st.session_state.stage = "analyze"
                     st.rerun()
         else:
@@ -166,6 +167,16 @@ elif st.session_state.stage == "prs":
 elif st.session_state.stage == "analyze":
     pr_url = st.session_state.selected_pr
     token = st.session_state.token
+
+    if st.button("Back to Review Queue"):
+        st.session_state.stage = "prs"
+        if "last_result" in st.session_state:
+            del st.session_state["last_result"]
+        st.rerun()
+
+    if pr_url == "auto":
+        st.info("Reviewing uncommitted changes — run CLI: python -m src.cli.main auto " + st.session_state.get("auto_repo", ""))
+        st.stop()
 
     if not pr_url:
         st.info("No PR selected.")
