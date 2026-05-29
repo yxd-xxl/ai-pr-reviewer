@@ -1,5 +1,5 @@
 from src.core.types import ReviewResult
-from src.delivery.checklist import render_checklist_md
+from src.delivery.checklist import render_checklist_md, action_plan
 
 
 def render_markdown(result: ReviewResult) -> str:
@@ -71,6 +71,8 @@ def render_markdown(result: ReviewResult) -> str:
 
     # Checklist
     lines.append(render_checklist_md(result))
+    lines.append("")
+    lines.extend(action_plan(result))
     lines.append("")
 
     if result.metadata:
