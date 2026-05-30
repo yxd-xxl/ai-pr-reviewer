@@ -26,8 +26,17 @@ class ReviewRepo:
                 pr_url TEXT NOT NULL,
                 pr_title TEXT,
                 repo TEXT,
+                pr_author TEXT,
+                base_sha TEXT,
+                head_sha TEXT,
+                files_count INTEGER DEFAULT 0,
+                lines_added INTEGER DEFAULT 0,
+                lines_deleted INTEGER DEFAULT 0,
                 findings_count INTEGER DEFAULT 0,
                 risk_score INTEGER DEFAULT 0,
+                llm_provider TEXT,
+                llm_model TEXT,
+                prompt_version TEXT,
                 mode TEXT DEFAULT 'balanced',
                 categories TEXT DEFAULT 'all',
                 created_at TEXT NOT NULL
@@ -46,6 +55,39 @@ class ReviewRepo:
                 suggestion TEXT,
                 fix_patch TEXT,
                 fingerprint TEXT,
+                lifecycle_state TEXT DEFAULT 'detected',
+                FOREIGN KEY (review_run_id) REFERENCES review_runs(id)
+            );
+            CREATE TABLE IF NOT EXISTS review_run_files (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                review_run_id INTEGER NOT NULL,
+                path TEXT NOT NULL,
+                status TEXT,
+                language TEXT,
+                additions INTEGER DEFAULT 0,
+                deletions INTEGER DEFAULT 0,
+                is_binary BOOLEAN DEFAULT FALSE,
+                analyzed BOOLEAN DEFAULT TRUE,
+                skip_reason TEXT,
+                FOREIGN KEY (review_run_id) REFERENCES review_runs(id)
+            );
+            CREATE TABLE IF NOT EXISTS prompt_versions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category TEXT NOT NULL,
+                version TEXT NOT NULL,
+                system_prompt_hash TEXT,
+                created_at TEXT NOT NULL,
+                is_active BOOLEAN DEFAULT TRUE
+            );
+            CREATE TABLE IF NOT EXISTS model_usages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                review_run_id INTEGER NOT NULL,
+                model TEXT,
+                provider TEXT,
+                call_count INTEGER DEFAULT 0,
+                total_tokens INTEGER DEFAULT 0,
+                total_latency_ms INTEGER DEFAULT 0,
+                cost_estimate REAL DEFAULT 0.0,
                 FOREIGN KEY (review_run_id) REFERENCES review_runs(id)
             );
         """)
@@ -90,6 +132,40 @@ class ReviewRepo:
             (run_id,)
         ).fetchall()
         return [dict(r) for r in rows]
+
+    def save_run_files(self, run_id: int, files: list):
+        """Record per-file metadata for a review run."""
+        for fc in files:
+            self._conn.execute(
+                "INSERT INTO review_run_files (review_run_id, path, status, language, additions, deletions, is_binary, analyzed) VALUES (?,?,?,?,?,?,?,?)",
+                (run_id, fc.path, fc.status, fc.language or "",
+                 fc.additions, fc.deletions, fc.is_binary, not fc.is_binary)
+            )
+        self._conn.commit()
+
+    def save_model_usage(self, run_id: int, model: str, provider: str,
+                         call_count: int = 0, total_tokens: int = 0,
+                         total_latency_ms: int = 0):
+        """Record LLM usage for a review run."""
+        self._conn.execute(
+            "INSERT INTO model_usages (review_run_id, model, provider, call_count, total_tokens, total_latency_ms) VALUES (?,?,?,?,?,?)",
+            (run_id, model, provider, call_count, total_tokens, total_latency_ms)
+        )
+        self._conn.commit()
+
+    def get_run_files(self, run_id: int) -> list[dict]:
+        rows = self._conn.execute(
+            "SELECT * FROM review_run_files WHERE review_run_id=?",
+            (run_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_model_usage(self, run_id: int) -> dict | None:
+        row = self._conn.execute(
+            "SELECT * FROM model_usages WHERE review_run_id=?",
+            (run_id,)
+        ).fetchone()
+        return dict(row) if row else None
 
     def close(self):
         self._conn.close()
