@@ -17,5 +17,8 @@ coverage/
 htmlcov/
 .mypy_cache/
 .ruff_cache/
+*.tmp.*
+*.tmp
 .ai-pr-reviewer/state.json
 .ai-pr-reviewer/reviews.db
+.ai-pr-reviewer/feedback.json
