@@ -3,6 +3,7 @@
 from src.analysis.analyzer import Analyzer
 from src.analysis.llm_analyzer import LLMAnalyzer
 from src.analysis.security_analyzer import SecurityAnalyzer
+from src.analysis.failure_analyzer import FailureAnalyzer
 from src.llm import LLMAdapter
 
 _registry: dict[str, type[Analyzer]] = {}
@@ -26,6 +27,7 @@ register("bug", LLMAnalyzer)
 register("performance", LLMAnalyzer)
 register("style", LLMAnalyzer)
 register("architecture", LLMAnalyzer)
+register("failure", FailureAnalyzer)
 
 
 def build_analyzers(categories: list[str], adapter: LLMAdapter,
@@ -44,6 +46,8 @@ def build_analyzers(categories: list[str], adapter: LLMAdapter,
             if issubclass(cls, LLMAnalyzer):
                 analyzers.append(cls(adapter, fix_categories=fix_categories or [],
                                      verify_all=verify_all))
+            elif issubclass(cls, FailureAnalyzer):
+                analyzers.append(cls(adapter, verify_all=verify_all))
             else:
                 analyzers.append(cls(adapter))
     return analyzers
