@@ -1,0 +1,58 @@
+{
+  "name": "ai-pr-reviewer",
+  "displayName": "AI PR Reviewer",
+  "description": "AI-driven code review — detect bugs, security issues, and style problems before pushing",
+  "version": "0.1.0",
+  "publisher": "ai-pr-reviewer",
+  "engines": { "vscode": "^1.90.0" },
+  "activationEvents": [
+    "onCommand:ai-pr-reviewer.reviewDiff",
+    "onCommand:ai-pr-reviewer.reviewFile",
+    "onView:ai-pr-reviewer.findings"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "ai-pr-reviewer.reviewDiff", "title": "AI Review: Review Staged Changes" },
+      { "command": "ai-pr-reviewer.reviewFile", "title": "AI Review: Review Current File" },
+      { "command": "ai-pr-reviewer.generateFix", "title": "AI Review: Generate Fix" },
+      { "command": "ai-pr-reviewer.markFP", "title": "AI Review: Mark as False Positive" }
+    ],
+    "views": {
+      "ai-pr-reviewer": [
+        { "id": "ai-pr-reviewer.findings", "name": "AI Review Findings" }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "ai-pr-reviewer",
+          "title": "AI PR Reviewer",
+          "icon": "$(checklist)"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AI PR Reviewer",
+      "properties": {
+        "aiPrReviewer.apiUrl": {
+          "type": "string", "default": "http://localhost:8000",
+          "description": "URL of the AI PR Reviewer API server"
+        },
+        "aiPrReviewer.autoReviewOnSave": {
+          "type": "boolean", "default": false,
+          "description": "Automatically review the current file on save"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.5.0"
+  }
+}
