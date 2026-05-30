@@ -1,5 +1,8 @@
 """AI PR Reviewer — FastAPI REST API server with modular routers."""
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
