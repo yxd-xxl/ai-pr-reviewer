@@ -4,9 +4,7 @@ import json
 import os
 import hashlib
 import hmac
-
-from src.pipeline import run_review
-from src.delivery.github_delivery import GitHubDelivery
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 
 def handle_webhook(payload: bytes, signature: str, secret: str,
@@ -38,14 +36,14 @@ def handle_webhook(payload: bytes, signature: str, secret: str,
     pr_url = data["pull_request"]["html_url"]
 
     try:
+        from src.pipeline import run_review
         pr, files, result = run_review(pr_url, token)
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
     # Deliver findings
+    from src.delivery.github_delivery import GitHubDelivery
     delivery = GitHubDelivery(token=token, dry_run=False)
-    # Check config for delivery mode
-    config = data.get("repository", {})
     actions = delivery.deliver(result, pr)
 
     return {
@@ -54,3 +52,43 @@ def handle_webhook(payload: bytes, signature: str, secret: str,
         "findings": len(result.findings),
         "actions": actions,
     }
+
+
+class _WebhookHandler(BaseHTTPRequestHandler):
+    _secret: str = ""
+    _token: str = ""
+
+    def do_POST(self):
+        content_length = int(self.headers.get("Content-Length", 0))
+        payload = self.rfile.read(content_length)
+        signature = self.headers.get("X-Hub-Signature-256", "")
+
+        result = handle_webhook(payload, signature, self._secret, self._token)
+
+        self.send_response(200 if result["status"] == "ok" else 400)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(result).encode())
+
+    def log_message(self, format, *args):
+        # Suppress default logging
+        pass
+
+
+def start_webhook_server(host: str = "0.0.0.0", port: int = 8080,
+                         secret: str = "", token: str = ""):
+    """Start a lightweight HTTP server for GitHub webhook events.
+    Trigger: pull_request opened/synchronize/reopened -> auto review.
+    """
+    _WebhookHandler._secret = secret
+    _WebhookHandler._token = token
+
+    server = HTTPServer((host, port), _WebhookHandler)
+    print(f"Webhook server listening on {host}:{port}")
+    print(f"Add webhook URL: http://<your-server>:{port}/")
+    print("Events: Pull Request — opened, synchronize, reopened")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\nShutting down...")
+        server.shutdown()
