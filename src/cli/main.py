@@ -366,5 +366,102 @@ def repos(limit: int):
         click.echo(f"  {r['full_name']:<35} {priv:<8} {r.get('language', ''):<10} {r.get('open_issues_count', 0)} issues")
 
 
+@cli.group()
+def batch():
+    """Batch review operations for multiple PRs"""
+    pass
+
+
+@batch.command("review")
+@click.argument("owner_repo")
+@click.option("--state", default="open", type=click.Choice(["open", "closed", "all"]))
+@click.option("--limit", default=10, help="Max PRs to review")
+@click.option("--categories", default="all", help="Analysis categories")
+@click.option("--parallel", default=4, help="Parallel workers")
+def batch_review(owner_repo: str, state: str, limit: int,
+                 categories: str, parallel: int):
+    """Batch review PRs in a repository"""
+    token = os.getenv("GITHUB_TOKEN", "")
+    if not token:
+        click.echo("Error: GITHUB_TOKEN not set", err=True)
+        sys.exit(1)
+    parts = owner_repo.split("/")
+    if len(parts) != 2:
+        click.echo("Error: use format owner/repo", err=True)
+        sys.exit(1)
+
+    import urllib.request as _ur, json as _json
+    url = (f"https://api.github.com/repos/{parts[0]}/{parts[1]}/pulls"
+           f"?state={state}&per_page={limit}&sort=updated&direction=desc")
+    req = _ur.Request(url, headers={
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "ai-pr-reviewer",
+    })
+    try:
+        with _ur.urlopen(req, timeout=15) as r:
+            prs = _json.loads(r.read())
+    except Exception as e:
+        click.echo(f"Error fetching PRs: {e}", err=True)
+        sys.exit(1)
+
+    if not prs:
+        click.echo("No PRs found.")
+        return
+
+    pr_urls = [pr["html_url"] for pr in prs]
+    click.echo(f"Found {len(pr_urls)} PR(s). Starting batch review...")
+
+    from src.service.batch_service import BatchReviewService
+    svc = BatchReviewService(token=token, max_workers=parallel)
+    job = svc.create_job(parts[0], parts[1], pr_urls)
+    svc.run_job(job.job_id, categories=categories)
+
+    progress = svc.get_progress(job.job_id)
+    click.echo(f"Completed: {progress['completed']}/{progress['total']} "
+               f"(failed: {progress['failed']})")
+
+    for r in svc.get_results(job.job_id):
+        status_icon = "OK" if r.get("findings", 0) < 5 else "!!"
+        click.echo(f"  {status_icon} {r['url']}: {r['findings']} finding(s) "
+                   f"({r['timing'].get('service_total', '?')}s)")
+
+
+@batch.command("export")
+@click.argument("owner_repo")
+@click.option("--format", "fmt", default="markdown",
+              type=click.Choice(["markdown", "sarif"]))
+def batch_export(owner_repo: str, fmt: str):
+    """Export review results for a repository"""
+    token = os.getenv("GITHUB_TOKEN", "")
+    if not token:
+        click.echo("Error: GITHUB_TOKEN not set", err=True)
+        sys.exit(1)
+    parts = owner_repo.split("/")
+    if len(parts) != 2:
+        click.echo("Error: use format owner/repo", err=True)
+        sys.exit(1)
+
+    repo_name = f"{parts[0]}/{parts[1]}"
+    from src.store.db import ReviewRepo
+    db = ReviewRepo()
+    try:
+        rows = db.get_history(repo=repo_name, limit=50)
+    finally:
+        db.close()
+
+    if not rows:
+        click.echo(f"No review history for {repo_name}.")
+        return
+
+    click.echo(f"Found {len(rows)} review(s) for {repo_name}.")
+    if fmt == "sarif":
+        click.echo("SARIF export: use individual PR review for detailed SARIF output.")
+    else:
+        for r in rows:
+            click.echo(f"  #{r['id']}: {r['pr_title'][:60]} "
+                       f"({r['findings_count']} findings, risk={r['risk_score']})")
+
+
 if __name__ == "__main__":
     cli()
