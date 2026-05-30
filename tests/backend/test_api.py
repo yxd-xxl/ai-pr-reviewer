@@ -29,7 +29,8 @@ class TestReviewEndpoint:
 
     def test_review_with_token(self, client):
         with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}, clear=False), \
-             patch("src.pipeline.run_review") as mock_run:
+             patch("src.pipeline.run_review") as mock_run, \
+             patch("backend.routers.review.require_permission", lambda p: lambda: None):
             mock_pr = MagicMock()
             mock_pr.title = "Test"; mock_pr.url = "url"; mock_pr.author = "dev"
             mock_pr.number = 1
