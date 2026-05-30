@@ -45,6 +45,14 @@ streamlit run app.py
 | **评估框架** | Precision/Recall/F1 量化 Review 质量 |
 | **GitHub Action** | PR opened/synchronize 自动触发 |
 | **多语言** | Python / JavaScript / TypeScript / Go |
+| **ESLint + staticcheck** | JS/TS/Go SAST 工具集成，多语言统一调度 |
+| **自动 Fix PR** | 生成 fix patch → 安全检查 → 创建 Fix PR |
+| **批量 Review** | `batch review` CLI + Bulk Review Center UI |
+| **Feedback 系统** | FP/TP/WontFix/Duplicate 等 10 种状态标记 |
+| **SQLite 持久化** | Review 历史、Finding、Feedback 持久存储 |
+| **多维 Risk Score** | 6 维风险分解：基础/安全/变更/测试/上下文/证据 |
+| **GitHub App** | Installation token 认证，团队级部署 |
+| **Webhook Server** | 零依赖 HTTP server，PR 事件自动触发 |
 | **Streamlit Dashboard** | 浏览器 UI，mock 模式零配置体验 |
 
 ---
