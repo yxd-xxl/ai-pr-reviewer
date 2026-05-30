@@ -1,4 +1,17 @@
 from dataclasses import dataclass, field
+from enum import Enum
+
+
+class FindingState(str, Enum):
+    DETECTED = "detected"
+    VERIFIED = "verified"
+    PUBLISHED = "published"
+    ACKNOWLEDGED = "acknowledged"
+    MARKED_FP = "marked_fp"
+    ACCEPTED = "accepted"
+    FIXED = "fixed"
+    DISMISSED = "dismissed"
+    REOPENED = "reopened"
 
 
 # ── PR ──────────────────────────────────────────
@@ -87,6 +100,18 @@ class Finding:
     fix_verification_note: str | None = None  # verification result detail
     rule_id: str | None = None
     analyzer: str | None = None
+    lifecycle_state: str = "detected"
+    lifecycle_history: list = field(default_factory=list)
+
+
+@dataclass
+class FindingEvent:
+    finding_fingerprint: str
+    from_state: str
+    to_state: str
+    user: str = "system"
+    reason: str = ""
+    timestamp: str = ""
 
 
 # ── Result ──────────────────────────────────────

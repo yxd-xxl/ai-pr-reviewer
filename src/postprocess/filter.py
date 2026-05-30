@@ -63,7 +63,18 @@ class PostProcessor:
                 f"after evidence gate"
             )
 
-        # 7. Limit
+        # 7. Transition lifecycle: detected -> verified
+        for f in findings:
+            if f.lifecycle_state == "detected":
+                from src.core.types import FindingEvent
+                f.lifecycle_history.append(FindingEvent(
+                    finding_fingerprint="", from_state="detected",
+                    to_state="verified", user="postprocessor",
+                    reason="Passed post-processing pipeline",
+                ).__dict__)
+                f.lifecycle_state = "verified"
+
+        # 8. Limit
         if len(findings) > self.max_findings:
             warnings.append(
                 f"Truncated {len(findings) - self.max_findings} findings "
