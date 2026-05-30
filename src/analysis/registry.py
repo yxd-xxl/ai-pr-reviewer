@@ -3,6 +3,7 @@
 from src.analysis.analyzer import Analyzer
 from src.analysis.llm_analyzer import LLMAnalyzer
 from src.analysis.security_analyzer import SecurityAnalyzer
+from src.analysis.style_analyzer import StyleAnalyzer
 from src.llm import LLMAdapter
 
 _registry: dict[str, type[Analyzer]] = {}
@@ -24,7 +25,7 @@ def list_registered() -> dict[str, type[Analyzer]]:
 register("security", SecurityAnalyzer)
 register("bug", LLMAnalyzer)
 register("performance", LLMAnalyzer)
-register("style", LLMAnalyzer)
+register("style", StyleAnalyzer)
 register("architecture", LLMAnalyzer)
 
 

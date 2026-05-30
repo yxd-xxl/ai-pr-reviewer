@@ -41,8 +41,11 @@ class TestAnalysisMode:
     def test_multiple_categories(self):
         mode = AnalysisMode.from_categories("bug,style")
         plan = mode.build_plan()
-        assert len(plan) == 1  # LLMAnalyzer covers both
-        assert isinstance(plan[0], LLMAnalyzer)
+        # LLMAnalyzer(bug) + StyleAnalyzer(style) = 2
+        assert len(plan) == 2
+        types = [type(a).__name__ for a in plan]
+        assert "LLMAnalyzer" in types
+        assert "StyleAnalyzer" in types
 
     def test_security_and_bug(self):
         mode = AnalysisMode.from_categories("security,bug")
