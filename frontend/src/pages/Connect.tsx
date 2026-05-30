@@ -35,17 +35,16 @@ export default function Connect() {
     setError("");
     setLoading(true);
     try {
-      const resp = await fetch(`${API}/api/v1/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        setUser(data);
-        localStorage.setItem("ai_pr_token", token);
+      // Exchange GitHub PAT for JWT
+      const resp = await fetch(`${API}/api/v1/auth/token?token=${encodeURIComponent(token)}`, { method: "POST" });
+      const data = await resp.json();
+      if (data.access_token) {
+        localStorage.setItem("ai_pr_token", data.access_token);
+        setUser(data.user);
         fetchRepos();
       } else {
         localStorage.removeItem("ai_pr_token");
-        setError("Invalid token (HTTP " + resp.status + "). Check your GitHub token and try again.");
+        setError("Invalid token. Check your GitHub token and try again.");
       }
     } catch {
       setError("Cannot reach API server at " + API + ". Start backend: python -m uvicorn backend.main:app --port 8000");
