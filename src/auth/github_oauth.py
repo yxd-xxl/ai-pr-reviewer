@@ -31,14 +31,15 @@ def exchange_code_for_token(code: str, client_id: str,
                             client_secret: str) -> str | None:
     """Exchange OAuth code for access token."""
     url = "https://github.com/login/oauth/access_token"
-    data = json.dumps({
+    import urllib.parse
+    data = urllib.parse.urlencode({
         "client_id": client_id,
         "client_secret": client_secret,
         "code": code,
     }).encode()
 
     req = urllib.request.Request(url, data=data, headers={
-        "Content-Type": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
         "Accept": "application/json",
     }, method="POST")
 
