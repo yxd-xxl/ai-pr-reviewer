@@ -101,8 +101,16 @@ elif st.session_state.stage == "prs":
     owner, repo = st.session_state.selected_repo.split("/")
     st.title(f"{owner}/{repo} — Review Queue")
 
-    if st.button("Back to repos"):
-        st.session_state.stage = "repos"; st.rerun()
+    c_back, c_bulk, c_hist = st.columns([1, 1, 1])
+    with c_back:
+        if st.button("Back to repos"):
+            st.session_state.stage = "repos"; st.rerun()
+    with c_bulk:
+        if st.button("Bulk Review"):
+            st.session_state.stage = "bulk"; st.rerun()
+    with c_hist:
+        if st.button("Review History"):
+            st.session_state.stage = "history"; st.rerun()
     st.divider()
 
         # Section 1: Auto Review (runs on page load — no button needed)
@@ -405,3 +413,60 @@ elif st.session_state.stage == "analyze":
         if "last_result" in st.session_state:
             del st.session_state.last_result
         st.rerun()
+
+
+# ── Stage 5: Bulk Review ────────────────────
+
+elif st.session_state.stage == "bulk":
+    st.title("Bulk Review Center")
+    if st.button("Back to Review Queue"):
+        st.session_state.stage = "prs"; st.rerun()
+    st.divider()
+
+    owner, repo = st.session_state.selected_repo.split("/")
+    token = st.session_state.token
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        pr_state = st.selectbox("PR State", ["open", "closed", "all"], key="bulk_state")
+    with col2:
+        limit = st.slider("Max PRs", 3, 30, 10)
+    with col3:
+        categories = st.selectbox("Categories", ["all", "security", "bug", "security,bug"], key="bulk_cats")
+
+    if st.button("Start Batch Review", type="primary"):
+        import urllib.request as _ur, json as _json
+        url = (f"https://api.github.com/repos/{owner}/{repo}/pulls"
+               f"?state={pr_state}&per_page={limit}&sort=updated&direction=desc")
+        req = _ur.Request(url, headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "ai-pr-reviewer",
+        })
+        with _ur.urlopen(req, timeout=15) as r:
+            prs = _json.loads(r.read())
+
+        if not prs:
+            st.info("No PRs found.")
+        else:
+            pr_urls = [pr["html_url"] for pr in prs]
+            progress = st.progress(0, f"0/{len(pr_urls)}")
+            results = []
+            for i, pr_url in enumerate(pr_urls):
+                with st.spinner(f"Reviewing {pr_url}..."):
+                    from src.pipeline import run_review
+                    try:
+                        _, _, result = run_review(pr_url, token, categories=categories)
+                        findings = len(result.findings)
+                        results.append({"url": pr_url, "findings": findings})
+                    except Exception as e:
+                        results.append({"url": pr_url, "error": str(e)})
+                progress.progress((i + 1) / len(pr_urls), f"{i + 1}/{len(pr_urls)}")
+
+            st.subheader(f"Results ({len(results)} PRs)")
+            for r in results:
+                if "error" in r:
+                    st.error(f"{r['url']}: {r['error']}")
+                else:
+                    sev = "!!" if r["findings"] > 5 else "OK"
+                    st.markdown(f"{sev} [{r['url']}]({r['url']}) — {r['findings']} finding(s)")
