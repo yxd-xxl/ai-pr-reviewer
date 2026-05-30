@@ -1,13 +1,13 @@
 """Repos router — list repos, list PRs."""
 
 from fastapi import APIRouter, Depends, Query
-from backend.dependencies import get_token
+from backend.dependencies import get_token, get_github_token
 
 router = APIRouter(prefix="/api/v1/repos", tags=["repos"])
 
 
 @router.get("")
-def list_repos(token: str = Depends(get_token), per_page: int = Query(30, le=100)):
+def list_repos(token: str = Depends(get_github_token), per_page: int = Query(30, le=100)):
     """List repositories accessible to the authenticated user."""
     from src.context.user_profile import list_user_repos
     repos = list_user_repos(token, per_page=per_page)
@@ -27,7 +27,7 @@ def list_repos(token: str = Depends(get_token), per_page: int = Query(30, le=100
 
 
 @router.get("/{owner}/{repo}/prs")
-def list_prs(owner: str, repo: str, token: str = Depends(get_token),
+def list_prs(owner: str, repo: str, token: str = Depends(get_github_token),
              state: str = Query("open"), limit: int = Query(20, le=50)):
     """List pull requests for a repository."""
     import json, urllib.request

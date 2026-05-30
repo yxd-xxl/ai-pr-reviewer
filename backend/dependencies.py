@@ -63,3 +63,28 @@ def get_user_github_token(user_id: int) -> str | None:
         return db.get_github_token(user_id)
     finally:
         db.close()
+
+
+def get_github_token(raw_token: str = Depends(get_token)) -> str:
+    """Resolve the authorization header to a valid GitHub API token.
+
+    If the token is a JWT, extracts user and returns their stored GitHub token.
+    If it's already a GitHub PAT (ghp_/gho_), returns it directly.
+    """
+    # Already a GitHub PAT — use directly
+    if raw_token.startswith("ghp_") or raw_token.startswith("gho_"):
+        return raw_token
+
+    # Try JWT — extract user, get stored GitHub token
+    try:
+        from backend.auth import verify_jwt
+        jwt_user = verify_jwt(raw_token)
+        if jwt_user:
+            gh_token = get_user_github_token(jwt_user.id)
+            if gh_token:
+                return gh_token
+    except Exception:
+        pass
+
+    # Fallback: might work as-is (env token, etc.)
+    return raw_token
