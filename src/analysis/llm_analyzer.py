@@ -8,7 +8,7 @@ from src.analysis.prompts.verify import build_verify_prompt
 from src.analysis.prompts.fix import build_fix_prompt
 from src.analysis.prompts.verify_fix import build_verify_fix_prompt
 from src.llm import LLMAdapter
-from src.security.bandit_runner import run_bandit
+from src.security.runner import run_sast
 
 
 class LLMAnalyzer(Analyzer):
@@ -26,13 +26,15 @@ class LLMAnalyzer(Analyzer):
         findings: list[Finding] = []
 
         file_paths = [f.path for f in context.files]
-        bandit_findings, bandit_warnings = run_bandit(file_paths)
-        warnings.extend(bandit_warnings)
-        if bandit_findings:
-            warnings.append(
-                f"Bandit SAST: {len(bandit_findings)} finding(s) "
-                f"across {len(set(b.file for b in bandit_findings))} file(s)"
-            )
+        sast_results = run_sast(file_paths)
+        all_sast_findings: list = []
+        for lang, sr in sast_results.items():
+            warnings.extend(sr.warnings)
+            if sr.findings:
+                all_sast_findings.extend(sr.findings)
+                warnings.append(
+                    f"{lang.title()} SAST: {len(sr.findings)} finding(s)"
+                )
 
         summary = self._generate_summary(context, warnings, errors)
 
@@ -42,7 +44,7 @@ class LLMAnalyzer(Analyzer):
         if analyzable:
             with ThreadPoolExecutor(max_workers=min(self._parallel, len(analyzable))) as pool:
                 futures = {
-                    pool.submit(self._analyze_file, fc, context, bandit_findings): fc
+                    pool.submit(self._analyze_file, fc, context, all_sast_findings): fc
                     for fc in analyzable
                 }
                 for f in as_completed(futures):
@@ -95,8 +97,8 @@ class LLMAnalyzer(Analyzer):
                 for fut in as_completed(futures):
                     try:
                         pass  # _generate_fix modifies f.fix_patch in place
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        warnings.append(f"Fix generation failed: {e}")
 
         # Stage 5: Verify generated fixes
         patched = [f for f in verified if f.fix_patch]
@@ -104,8 +106,8 @@ class LLMAnalyzer(Analyzer):
             for f in patched:
                 try:
                     self._verify_fix(f, context)
-                except Exception:
-                    pass
+                except Exception as e:
+                    f.fix_verification_note = f"Verification error: {e}"
 
         return ReviewResult(
             summary=summary,
@@ -126,8 +128,8 @@ class LLMAnalyzer(Analyzer):
             return f"## PR Summary\n\nFailed to generate: {e}"
 
     def _analyze_file(self, fc, ctx: ReviewContext,
-                      bandit: list | None = None) -> list[Finding]:
-        system, user = build_analysis_prompt(fc, ctx, bandit)
+                      sast_findings: list | None = None) -> list[Finding]:
+        system, user = build_analysis_prompt(fc, ctx, sast_findings)
         data = self._adapter.complete_json(system=system, user=user)
         return [Finding(
             severity=f.get("severity", "medium"),
@@ -182,7 +184,7 @@ class LLMAnalyzer(Analyzer):
             if patch and patch.strip():
                 finding.fix_patch = patch.strip()
         except Exception:
-            pass
+            pass  # _generate_fix is best-effort, failure captured in warnings
 
     def _verify_fix(self, finding, ctx):
         """Verify a generated fix patch. Modifies finding.fix_verified."""
@@ -205,7 +207,7 @@ class LLMAnalyzer(Analyzer):
                 finding.fix_verification_note = data.get('issues', 'Fix could not be verified')
                 finding.confidence = max(0, finding.confidence - 0.15)
         except Exception:
-            pass
+            pass  # _verify_fix is best-effort, failure captured via fix_verification_note
 
     def followup(self, finding, question: str, ctx) -> dict:
         """Answer a follow-up question about a finding."""

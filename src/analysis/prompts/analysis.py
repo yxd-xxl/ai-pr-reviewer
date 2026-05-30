@@ -1,5 +1,4 @@
 from src.core.types import FileChange, ReviewContext
-from src.security.bandit_runner import BanditFinding
 from src.langs.registry import get_lang
 
 
@@ -83,7 +82,7 @@ Review the code above and output findings in JSON format."""
 
 
 def build_analysis_prompt(fc: FileChange, ctx: ReviewContext,
-                          bandit: list[BanditFinding] | None = None) -> tuple[str, str]:
+                          bandit: list | None = None) -> tuple[str, str]:
     # Use full file content as primary review target (avoids diff confusion)
     if fc.full_content:
         content_label = "Current file content (review this)"
@@ -97,18 +96,23 @@ def build_analysis_prompt(fc: FileChange, ctx: ReviewContext,
     # Inject SAST findings as verification hints
     sast_section = ""
     if bandit:
-        relevant = [b for b in bandit
-                    if b.file == fc.path
-                    or fc.path.endswith(b.file.split("/")[-1])]
+        relevant = []
+        for b in bandit:
+            b_file = getattr(b, 'file', '')
+            if b_file == fc.path or fc.path.endswith(b_file.split("/")[-1]):
+                relevant.append(b)
         if relevant:
             lines = [
-                "SAST (Bandit) detected the following in this file. "
+                "SAST tools detected the following in this file. "
                 "Verify each — confirm if it's a real issue or a false positive:",
                 "",
             ]
             for b in relevant:
+                b_sev = getattr(b, 'severity', '?')
+                b_conf = getattr(b, 'confidence', '?')
+                conf_str = f"/{b_conf}" if b_conf != '?' else ''
                 lines.append(
-                    f"  [{b.issue_id}] {b.severity}/{b.confidence} "
+                    f"  [{b.issue_id}] {b_sev}{conf_str} "
                     f"Line {b.line}: {b.description}"
                 )
             sast_section = "\n".join(lines)

@@ -1,5 +1,4 @@
 from src.core.types import FileChange, ReviewContext
-from src.security.bandit_runner import BanditFinding
 
 
 _SECURITY_SYSTEM = """\
@@ -55,7 +54,7 @@ Analyze the diff above and output findings in JSON format."""
 
 
 def build_security_prompt(fc: FileChange, ctx: ReviewContext,
-                          bandit: list[BanditFinding] | None = None) -> tuple[str, str]:
+                          sast_findings: list | None = None) -> tuple[str, str]:
     diff = fc.diff if len(fc.diff) < 8000 else fc.diff[:8000] + "\n... (truncated)"
     user = _ANALYSIS_USER.format(
         path=fc.path,
@@ -66,10 +65,14 @@ def build_security_prompt(fc: FileChange, ctx: ReviewContext,
         pr_title=ctx.pr.title,
         diff=diff,
     )
-    if bandit:
-        relevant = [b for b in bandit if b.file == fc.path]
+    if sast_findings:
+        relevant = []
+        for b in sast_findings:
+            b_file = getattr(b, 'file', '')
+            if b_file == fc.path:
+                relevant.append(b)
         if relevant:
-            lines = ["Bandit SAST flagged these — verify each:", ""]
+            lines = ["SAST tools flagged these — verify each:", ""]
             for b in relevant:
                 lines.append(f"  [{b.issue_id}] Line {b.line}: {b.description}")
             user += "\n\n" + "\n".join(lines)

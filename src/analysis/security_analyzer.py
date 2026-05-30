@@ -3,7 +3,7 @@ from src.analysis.analyzer import Analyzer
 from src.analysis.confidence import parse_confidence
 from src.analysis.prompts import build_security_prompt, build_summary_prompt
 from src.llm import LLMAdapter
-from src.security.bandit_runner import run_bandit
+from src.security.runner import run_sast
 
 
 class SecurityAnalyzer(Analyzer):
@@ -19,12 +19,15 @@ class SecurityAnalyzer(Analyzer):
 
         # SAST pre-filter
         file_paths = [f.path for f in context.files]
-        bandit_findings, bandit_warnings = run_bandit(file_paths)
-        warnings.extend(bandit_warnings)
-        if bandit_findings:
-            warnings.append(
-                f"Bandit SAST: {len(bandit_findings)} finding(s)"
-            )
+        sast_results = run_sast(file_paths)
+        all_sast_findings: list = []
+        for lang, sr in sast_results.items():
+            warnings.extend(sr.warnings)
+            if sr.findings:
+                all_sast_findings.extend(sr.findings)
+                warnings.append(
+                    f"{lang.title()} SAST: {len(sr.findings)} finding(s)"
+                )
 
         # Summary
         summary = self._generate_summary(context, warnings, errors)
@@ -34,7 +37,7 @@ class SecurityAnalyzer(Analyzer):
             if fc.is_binary or fc.status == "removed":
                 continue
             try:
-                system, user = build_security_prompt(fc, context, bandit_findings)
+                system, user = build_security_prompt(fc, context, all_sast_findings)
                 data = self._adapter.complete_json(system=system, user=user)
                 for f in data.get("findings", []):
                     if parse_confidence(f.get("confidence", 50)) >= 0.5:
