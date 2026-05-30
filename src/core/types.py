@@ -89,6 +89,30 @@ class Finding:
     analyzer: str | None = None
 
 
+# ── Fix ─────────────────────────────────────────
+
+@dataclass
+class FixProposal:
+    finding_fingerprint: str
+    patch: str
+    description: str
+    status: str = "generated"  # generated|apply_failed|applied|test_failed|verified|rejected
+    verification_note: str | None = None
+    test_result: str | None = None
+    risk_note: str = ""
+    created_at: str = ""
+
+
+@dataclass
+class FixRun:
+    pr_url: str
+    proposals: list[FixProposal] = field(default_factory=list)
+    status: str = "dry_run"
+    branch: str = ""
+    fix_pr_url: str = ""
+    actions: list[str] = field(default_factory=list)
+
+
 # ── Result ──────────────────────────────────────
 
 @dataclass
