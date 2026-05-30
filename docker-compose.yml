@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - LLM_PROVIDER=${LLM_PROVIDER:-mock}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.deepseek.com}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
+    volumes:
+      - ./.ai-pr-reviewer:/app/.ai-pr-reviewer
+    restart: unless-stopped
+
+  api:
+    build: .
+    command: python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - LLM_PROVIDER=${LLM_PROVIDER:-mock}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.deepseek.com}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-chat}
+    volumes:
+      - ./.ai-pr-reviewer:/app/.ai-pr-reviewer
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: python -m src.cli.main review ${WATCH_PR_URL:-}
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - LLM_PROVIDER=${LLM_PROVIDER:-mock}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+    volumes:
+      - ./.ai-pr-reviewer:/app/.ai-pr-reviewer
+    profiles: ["worker"]

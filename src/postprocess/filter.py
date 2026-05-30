@@ -38,17 +38,30 @@ class PostProcessor:
                 f"Degraded {no_evidence} finding(s) without evidence (-0.3 confidence)"
             )
 
-        # 4. Feedback gate: degrade known false positives
+        # 4. Feedback gate: degrade known false positives and low-priority
+        from src.feedback.tracker import FeedbackState
         tracker = FeedbackTracker()
         fp_degraded = 0
+        other_degraded = 0
         for f in findings:
-            if tracker.is_known_fp(f):
+            state = tracker.get_state(f)
+            if state == FeedbackState.FALSE_POSITIVE:
                 f.confidence = max(0, f.confidence - 0.4)
                 f.classification = "preexisting"
                 fp_degraded += 1
+            elif state == FeedbackState.DUPLICATE:
+                f.confidence = max(0, f.confidence - 0.3)
+                other_degraded += 1
+            elif state == FeedbackState.WONT_FIX:
+                f.confidence = max(0, f.confidence - 0.2)
+                other_degraded += 1
         if fp_degraded:
             warnings.append(
                 f"Degraded {fp_degraded} known false positive(s) (-0.4 confidence)"
+            )
+        if other_degraded:
+            warnings.append(
+                f"Degraded {other_degraded} finding(s) by feedback state (-0.2/-0.3 confidence)"
             )
 
         # 5. Deduplicate

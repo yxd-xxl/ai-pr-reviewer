@@ -3,6 +3,8 @@ from pathlib import Path
 
 import yaml
 
+from src.analysis.budget import AnalysisBudget
+
 
 @dataclass
 class DeliveryConfig:
@@ -31,6 +33,7 @@ class ReviewConfig:
         ".claude/CLAUDE.md",
     ])
     delivery: DeliveryConfig = field(default_factory=DeliveryConfig)
+    budget: AnalysisBudget = field(default_factory=AnalysisBudget)
 
     def __post_init__(self):
         if self.mode not in ("fast", "balanced", "deep"):
@@ -47,6 +50,8 @@ class ReviewConfig:
             )
         if isinstance(self.delivery, dict):
             self.delivery = DeliveryConfig(**self.delivery)
+        if isinstance(self.budget, dict):
+            self.budget = AnalysisBudget(**self.budget)
 
 
 DEFAULT_CONFIG = ReviewConfig()

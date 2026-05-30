@@ -66,3 +66,26 @@ def _map_level(severity: str) -> str:
         "medium": "warning",
         "low": "note",
     }.get(severity, "warning")
+
+
+def upload_sarif_to_code_scanning(token: str, owner: str, repo: str,
+                                   sarif_json: str, commit_sha: str = "HEAD") -> dict:
+    """Upload SARIF results to GitHub Code Scanning API."""
+    import urllib.request
+    body = json.dumps({
+        "commit_sha": commit_sha,
+        "ref": "refs/heads/main",
+        "sarif": sarif_json,
+    }).encode()
+    url = f"https://api.github.com/repos/{owner}/{repo}/code-scanning/sarifs"
+    req = urllib.request.Request(url, data=body, headers={
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json",
+        "User-Agent": "ai-pr-reviewer",
+    }, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return json.loads(resp.read())
+    except Exception as e:
+        return {"error": str(e)}

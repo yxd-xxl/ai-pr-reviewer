@@ -54,6 +54,17 @@ class SecurityAnalyzer(Analyzer):
             except Exception as e:
                 errors.append(f"Security analysis failed for {fc.path}: {e}")
 
+        # Post-filter: degrade findings from debug/test/example code
+        fp_keywords = ["debug", "test", "example", "demo", "__name__"]
+        degraded = 0
+        for f in findings:
+            desc_lower = (f.description + f.evidence or "").lower()
+            if any(kw in desc_lower for kw in fp_keywords) and f.confidence < 0.7:
+                f.confidence = max(0, f.confidence - 0.3)
+                degraded += 1
+        if degraded:
+            warnings.append(f"Post-filter degraded {degraded} potential FP(s) from debug/test context")
+
         return ReviewResult(
             summary=summary, findings=findings,
             metadata={"analyzer": "security", "model": "llm"},

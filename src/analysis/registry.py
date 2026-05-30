@@ -1,8 +1,13 @@
-"""Dynamic analyzer registry — supports custom plugins."""
+"""Dynamic analyzer registry — 6 independent analyzers + LLMAnalyzer fallback."""
 
 from src.analysis.analyzer import Analyzer
 from src.analysis.llm_analyzer import LLMAnalyzer
 from src.analysis.security_analyzer import SecurityAnalyzer
+from src.analysis.bug_analyzer import BugAnalyzer
+from src.analysis.performance_analyzer import PerformanceAnalyzer
+from src.analysis.style_analyzer import StyleAnalyzer
+from src.analysis.architecture_analyzer import ArchitectureAnalyzer
+from src.analysis.failure_analyzer import FailureAnalyzer
 from src.llm import LLMAdapter
 
 _registry: dict[str, type[Analyzer]] = {}
@@ -20,12 +25,12 @@ def list_registered() -> dict[str, type[Analyzer]]:
     return dict(_registry)
 
 
-# Built-in defaults
 register("security", SecurityAnalyzer)
-register("bug", LLMAnalyzer)
-register("performance", LLMAnalyzer)
-register("style", LLMAnalyzer)
-register("architecture", LLMAnalyzer)
+register("bug", BugAnalyzer)
+register("performance", PerformanceAnalyzer)
+register("style", StyleAnalyzer)
+register("architecture", ArchitectureAnalyzer)
+register("failure", FailureAnalyzer)
 
 
 def build_analyzers(categories: list[str], adapter: LLMAdapter,
@@ -34,7 +39,6 @@ def build_analyzers(categories: list[str], adapter: LLMAdapter,
     if "all" in categories:
         return [LLMAnalyzer(adapter, fix_categories=fix_categories or [],
                             verify_all=verify_all)]
-
     seen = set()
     analyzers = []
     for cat in categories:
@@ -44,6 +48,8 @@ def build_analyzers(categories: list[str], adapter: LLMAdapter,
             if issubclass(cls, LLMAnalyzer):
                 analyzers.append(cls(adapter, fix_categories=fix_categories or [],
                                      verify_all=verify_all))
+            elif issubclass(cls, (BugAnalyzer, FailureAnalyzer, ArchitectureAnalyzer, PerformanceAnalyzer)):
+                analyzers.append(cls(adapter, verify_all=verify_all))
             else:
                 analyzers.append(cls(adapter))
     return analyzers

@@ -38,9 +38,20 @@ class GitHubDelivery(Delivery):
 
             inline_findings.append(f)
 
+        # Scan existing comments to avoid duplicates ===============
+        existing_fps: set[str] = set()
+        if not self.dry_run:
+            from src.delivery.comment_thread import scan_existing_comments
+            threads = scan_existing_comments(self._token, pr)
+            for t in threads:
+                existing_fps.add(t.finding_fingerprint)
+
         # Post inline comments =====================================
         for f in inline_findings:
             fp = _fingerprint(f)
+            if fp in existing_fps:
+                actions.append(f"Skipped (already posted): {f.location.file}:{f.location.line} — {f.title}")
+                continue
             marker = f"<!-- ai-pr-reviewer fp={fp} -->"
             body = (
                 f"**{f.severity.upper()}** `{f.category}` — {f.title}\n\n"

@@ -39,6 +39,17 @@ Output valid JSON only:
   ]
 }
 
+FP PREVENTION RULES:
+- Debug/test code is NOT a vulnerability: if debug/eval/test code is guarded
+  by 'if debug:', 'if __name__', or in test files, do NOT flag it.
+- Defensive coding is NOT a vulnerability: sanitizing input as a precaution
+  is good practice, not evidence of a real attack surface.
+- Evaluate attack surface: before flagging, ask "Can an attacker reach this
+  code path without prior authentication/authorization?" If NO, downgrade
+  confidence to <= 50.
+- CWE mapping requires justification: when assigning a CWE-ID, explain the
+  vulnerability path (source -> sink) in the description, not just keywords.
+
 Confidence: 0=FP 25=maybe 50=real-minor 75=real-important 100=certain.
 Confidence >= 50 required. No issues → {"findings": []}"""
 
