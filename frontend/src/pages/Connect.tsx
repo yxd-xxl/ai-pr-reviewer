@@ -20,8 +20,14 @@ export default function Connect() {
   const [error, setError] = useState("");
   const [repoFilter, setRepoFilter] = useState("");
 
-  // Check token on mount
+  // Check token on mount + OAuth error from callback
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthErr = params.get("error");
+    if (oauthErr) {
+      setError("OAuth failed: " + decodeURIComponent(oauthErr));
+      window.history.replaceState({}, "", "/connect");
+    }
     if (token) fetchUser();
   }, []);
 
