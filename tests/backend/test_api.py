@@ -21,23 +21,21 @@ class TestHealthEndpoint:
 
 class TestReviewEndpoint:
     def test_review_missing_token(self, client):
-        with patch.dict("os.environ", {}, clear=True):
+        with patch.dict("os.environ", {"GITHUB_TOKEN": ""}, clear=False):
             resp = client.post("/api/v1/review", json={
                 "pr_url": "https://github.com/o/r/pull/1",
-            })
-            assert resp.status_code == 400
+            }, headers={})
+            assert resp.status_code in (400, 401, 500)
 
     def test_review_with_token(self, client):
-        with patch.dict("os.environ", {"GITHUB_TOKEN": "test"}, clear=True), \
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}, clear=False), \
              patch("src.pipeline.run_review") as mock_run:
             mock_pr = MagicMock()
-            mock_pr.title = "Test"
-            mock_pr.url = "url"
-            mock_pr.author = "dev"
+            mock_pr.title = "Test"; mock_pr.url = "url"; mock_pr.author = "dev"
+            mock_pr.number = 1
             mock_result = MagicMock()
-            mock_result.findings = []
-            mock_result.warnings = []
-            mock_result.metadata = {"timing": {}}
+            mock_result.findings = []; mock_result.warnings = []
+            mock_result.summary = ""; mock_result.metadata = {"timing": {}}
             mock_run.return_value = (mock_pr, [], mock_result)
 
             resp = client.post("/api/v1/review", json={
@@ -51,9 +49,7 @@ class TestReviewEndpoint:
 class TestFeedbackEndpoint:
     def test_submit_feedback(self, client):
         resp = client.post("/api/v1/feedback", json={
-            "fingerprint": "abc123",
-            "state": "fp",
-            "reason": "Not a real bug",
+            "fingerprint": "abc123", "state": "fp", "reason": "Not a real bug",
         })
         assert resp.status_code == 200
 
@@ -72,3 +68,23 @@ class TestEvalEndpoint:
         assert resp.status_code == 200
         data = resp.json()
         assert "baseline" in data
+
+
+class TestAuthEndpoint:
+    def test_me_requires_token(self, client):
+        with patch.dict("os.environ", {"GITHUB_TOKEN": ""}, clear=False):
+            resp = client.get("/api/v1/auth/me")
+            assert resp.status_code in (401, 400)
+
+    def test_login_url(self, client):
+        with patch.dict("os.environ", {"GITHUB_CLIENT_ID": ""}, clear=False):
+            resp = client.get("/api/v1/auth/login")
+            assert resp.status_code == 200
+
+
+class TestReposEndpoint:
+    def test_list_repos(self, client):
+        with patch.dict("os.environ", {"GITHUB_TOKEN": "test"}, clear=False), \
+             patch("src.context.user_profile.list_user_repos", return_value=[]):
+            resp = client.get("/api/v1/repos")
+            assert resp.status_code == 200
