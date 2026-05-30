@@ -8,12 +8,13 @@ export default function Connect() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // If already logged in, redirect to dashboard
+  // Stay on repo selection unless BOTH logged in AND repo selected
   useEffect(() => {
     const token = localStorage.getItem("ai_pr_token");
-    if (token) {
+    const repo = localStorage.getItem("ai_pr_repo");
+    if (token && repo) {
       fetch(`${API}/api/v1/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => { if (r.ok) navigate("/dashboard"); })
+        .then(r => { if (r.ok) navigate("/review-queue"); })
         .catch(() => {});
     }
     // Show OAuth error from failed callback

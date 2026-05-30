@@ -21,7 +21,18 @@ export default function ReviewQueue() {
   const [filter, setFilter] = useState("open");
   const repo = getRepo(); const token = getToken();
 
-  useEffect(() => { if (!repo || !token) navigate("/connect"); else fetchPRs(); }, [filter]);
+  useEffect(() => { if (repo && token) fetchPRs(); }, [filter]);
+
+  if (!repo || !token) return (
+    <div style={{ maxWidth: 600, margin: "80px auto", textAlign: "center", padding: 24 }}>
+      <h2>No repository selected</h2>
+      <p style={{ color: "#6b7280", marginBottom: 24 }}>Select a repository to view its pull requests.</p>
+      <button onClick={() => navigate("/connect")}
+        style={{ padding: "10px 24px", borderRadius: 8, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer", fontSize: 14 }}>
+        Go to Repository Selection
+      </button>
+    </div>
+  );
 
   async function fetchPRs() {
     setLoading(true); setError("");
