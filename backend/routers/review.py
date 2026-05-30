@@ -1,16 +1,18 @@
-"""Review router — submit, query, history."""
+"""Review router — submit, query, history (RBAC-enforced)."""
 
 import os
 import time
 from fastapi import APIRouter, Depends, HTTPException, Query
-from backend.dependencies import get_token
+from backend.dependencies import get_token, get_current_user
+from backend.middleware import require_permission
 from backend.models import ReviewRequest, ReviewResponse, FeedbackRequest
 
 router = APIRouter(prefix="/api/v1", tags=["review"])
 
 
 @router.post("/review", response_model=ReviewResponse)
-def create_review(req: ReviewRequest, token: str = Depends(get_token)):
+def create_review(req: ReviewRequest, token: str = Depends(get_token),
+                  _user=Depends(require_permission("create_review"))):
     """Submit a PR for AI review."""
     from src.pipeline import run_review
     from src.delivery.checklist import risk_score as calc_risk
