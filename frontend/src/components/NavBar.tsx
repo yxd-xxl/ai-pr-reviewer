@@ -11,6 +11,14 @@ export default function NavBar() {
   const { pathname } = useLocation();
   const token = localStorage.getItem("ai_pr_token");
   const repo = localStorage.getItem("ai_pr_repo");
+  const [dark, setDark] = useState(localStorage.getItem("theme") === "dark");
+
+  function toggleTheme() {
+    const next = !dark;
+    setDark(next);
+    localStorage.setItem("theme", next ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", next ? "dark" : "");
+  }
 
   return (
     <nav style={{
@@ -47,6 +55,11 @@ export default function NavBar() {
           Sign in →
         </Link>
       )}
+      <button onClick={toggleTheme}
+        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, padding: "4px 8px", marginLeft: 4 }}
+        title={dark ? "Switch to light mode" : "Switch to dark mode"}>
+        {dark ? "☀️" : "🌙"}
+      </button>
     </nav>
   );
 }
