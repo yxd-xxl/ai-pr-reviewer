@@ -20,6 +20,8 @@ class ReviewRepo:
         self._init_schema()
 
     def _init_schema(self):
+        from src.store.schema import SCHEMA_SQL
+        self._conn.executescript(SCHEMA_SQL)
         self._conn.executescript("""
             CREATE TABLE IF NOT EXISTS review_runs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -154,6 +156,130 @@ def _make_fingerprint(finding) -> str:
     import hashlib
     key = f"{finding.location.file}:{finding.location.line}:{finding.title}"
     return hashlib.sha256(key.encode()).hexdigest()[:12]
+
+
+# ── User & Auth Repos ────────────────────────
+
+class UserRepo:
+    """User account management — linked to GitHub identity."""
+
+    def __init__(self, path: str = _DEFAULT_PATH):
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        self._conn = sqlite3.connect(path)
+        self._conn.row_factory = sqlite3.Row
+
+    def find_or_create_by_github(self, github_id: int, login: str,
+                                  name: str | None = None,
+                                  email: str | None = None,
+                                  avatar_url: str | None = None) -> dict:
+        row = self._conn.execute(
+            "SELECT * FROM users WHERE github_id=?", (github_id,)
+        ).fetchone()
+        if row:
+            return dict(row)
+
+        cur = self._conn.execute(
+            "INSERT INTO users (github_id, login, name, email, avatar_url) VALUES (?,?,?,?,?)",
+            (github_id, login, name, email, avatar_url)
+        )
+        self._conn.commit()
+        return {"id": cur.lastrowid, "github_id": github_id, "login": login,
+                "name": name, "email": email, "avatar_url": avatar_url}
+
+    def find_by_id(self, user_id: int) -> dict | None:
+        row = self._conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+        return dict(row) if row else None
+
+    def find_by_github_id(self, github_id: int) -> dict | None:
+        row = self._conn.execute("SELECT * FROM users WHERE github_id=?", (github_id,)).fetchone()
+        return dict(row) if row else None
+
+    def save_github_token(self, user_id: int, access_token: str,
+                          scopes: str = "", expires_at: str | None = None):
+        self._conn.execute(
+            "INSERT OR REPLACE INTO github_tokens (user_id, access_token, scopes, expires_at) VALUES (?,?,?,?)",
+            (user_id, access_token, scopes, expires_at)
+        )
+        self._conn.commit()
+
+    def get_github_token(self, user_id: int) -> str | None:
+        row = self._conn.execute(
+            "SELECT access_token FROM github_tokens WHERE user_id=?", (user_id,)
+        ).fetchone()
+        return row["access_token"] if row else None
+
+    def close(self):
+        self._conn.close()
+
+
+class SessionRepo:
+    """JWT refresh token storage."""
+
+    def __init__(self, path: str = _DEFAULT_PATH):
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        self._conn = sqlite3.connect(path)
+        self._conn.row_factory = sqlite3.Row
+
+    def create(self, user_id: int, token_hash: str, expires_at: str) -> int:
+        cur = self._conn.execute(
+            "INSERT INTO sessions (user_id, token_hash, expires_at) VALUES (?,?,?)",
+            (user_id, token_hash, expires_at)
+        )
+        self._conn.commit()
+        return cur.lastrowid
+
+    def find_valid(self, token_hash: str) -> dict | None:
+        row = self._conn.execute(
+            "SELECT * FROM sessions WHERE token_hash=? AND expires_at > datetime('now')",
+            (token_hash,)
+        ).fetchone()
+        return dict(row) if row else None
+
+    def revoke(self, token_hash: str):
+        self._conn.execute("DELETE FROM sessions WHERE token_hash=?", (token_hash,))
+        self._conn.commit()
+
+    def revoke_all_for_user(self, user_id: int):
+        self._conn.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
+
+class AuditRepo:
+    """Audit log for compliance and debugging."""
+
+    def __init__(self, path: str = _DEFAULT_PATH):
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        self._conn = sqlite3.connect(path)
+        self._conn.row_factory = sqlite3.Row
+
+    def log(self, user_id: int | None, action: str, resource: str = "",
+            details: str = "", org_id: int | None = None):
+        self._conn.execute(
+            "INSERT INTO audit_logs (user_id, org_id, action, resource, details) VALUES (?,?,?,?,?)",
+            (user_id, org_id, action, resource, details)
+        )
+        self._conn.commit()
+
+    def get_trail(self, user_id: int | None = None, action: str = "",
+                  limit: int = 100) -> list[dict]:
+        q = "SELECT * FROM audit_logs WHERE 1=1"
+        params = []
+        if user_id:
+            q += " AND user_id=?"
+            params.append(user_id)
+        if action:
+            q += " AND action=?"
+            params.append(action)
+        q += " ORDER BY created_at DESC LIMIT ?"
+        params.append(limit)
+        return [dict(r) for r in self._conn.execute(q, params).fetchall()]
+
+    def close(self):
+        self._conn.close()
+
 
 
 def migrate_from_json(state_path: str, db_path: str = _DEFAULT_PATH) -> str:
