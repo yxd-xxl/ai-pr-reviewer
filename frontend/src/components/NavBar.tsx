@@ -30,8 +30,8 @@ export default function NavBar() {
     navigate("/connect");
   }
 
-  // Hide entirely on login page
-  if (!token && pathname === "/connect") return null;
+  // Hide on connect, callback, and root — these are standalone pages
+  if (pathname === "/connect" || pathname === "/callback" || pathname === "/") return null;
   // Show minimal bar on other unauthenticated pages
   if (!token) return (
     <nav style={{ padding: "8px 24px", borderBottom: "1px solid #e5e7eb", background: "var(--bg-primary)", display: "flex", alignItems: "center" }}>
