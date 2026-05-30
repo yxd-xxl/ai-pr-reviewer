@@ -26,6 +26,8 @@ export default function Connect() {
   }, []);
 
   async function fetchUser() {
+    setError("");
+    setLoading(true);
     try {
       const resp = await fetch(`${API}/api/v1/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -37,11 +39,12 @@ export default function Connect() {
         fetchRepos();
       } else {
         localStorage.removeItem("ai_pr_token");
-        setError("Invalid token. Please re-enter.");
+        setError("Invalid token (HTTP " + resp.status + "). Check your GitHub token and try again.");
       }
     } catch {
-      setError("Cannot reach API server at " + API);
+      setError("Cannot reach API server at " + API + ". Start backend: python -m uvicorn backend.main:app --port 8000");
     }
+    setLoading(false);
   }
 
   async function fetchRepos() {
@@ -117,11 +120,15 @@ export default function Connect() {
         <div style={{ margin: "24px 0", color: "#9ca3af" }}>or</div>
 
         <button
-          onClick={() => {
-            fetch(`${API}/api/v1/auth/login`).then(r => r.json()).then(d => {
+          onClick={async () => {
+            try {
+              const r = await fetch(`${API}/api/v1/auth/login`);
+              const d = await r.json();
               if (d.url) window.location.href = d.url;
-              else setError("GitHub OAuth not configured. Use token above.");
-            });
+              else setError(d.message || "GitHub OAuth not configured. Use a personal token above.");
+            } catch {
+              setError("Cannot reach API server at " + API + ". Make sure backend is running.");
+            }
           }}
           style={{
             width: "100%", padding: "12px", fontSize: 16, fontWeight: 600,
