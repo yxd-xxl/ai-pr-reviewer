@@ -41,8 +41,11 @@ class TestAnalysisMode:
     def test_multiple_categories(self):
         mode = AnalysisMode.from_categories("bug,style")
         plan = mode.build_plan()
-        assert len(plan) == 1  # LLMAnalyzer covers both
-        assert isinstance(plan[0], LLMAnalyzer)
+        # BugAnalyzer + LLMAnalyzer (style) = 2 analyzers
+        assert len(plan) == 2
+        types = [type(a).__name__ for a in plan]
+        assert "BugAnalyzer" in types
+        assert "LLMAnalyzer" in types
 
     def test_security_and_bug(self):
         mode = AnalysisMode.from_categories("security,bug")
@@ -50,7 +53,7 @@ class TestAnalysisMode:
         assert len(plan) == 2
         types = [type(a).__name__ for a in plan]
         assert "SecurityAnalyzer" in types
-        assert "LLMAnalyzer" in types
+        assert "BugAnalyzer" in types
 
     def test_invalid_category_raises(self):
         with pytest.raises(ValueError, match="Unknown category"):
