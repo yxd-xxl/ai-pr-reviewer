@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router-dom";
+
 interface MetricCard {
   label: string; value: string | number; trend?: string;
 }

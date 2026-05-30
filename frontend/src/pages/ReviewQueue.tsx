@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface PR {
   id: string; repo: string; title: string; author: string;
@@ -15,6 +16,7 @@ const mockPRs: PR[] = [
 ];
 
 export default function ReviewQueue() {
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState("all");
 
@@ -90,7 +92,14 @@ export default function ReviewQueue() {
                 </span>
               </td>
               <td style={{ padding: 8, fontSize: 12 }}>
-                {pr.reviewed ? <span style={{ color: "#16a34a" }}>Reviewed</span> : <span style={{ color: "#6b7280" }}>Pending</span>}
+                {pr.reviewed
+                  ? <span style={{ color: "#16a34a" }}>Reviewed</span>
+                  : <button onClick={() => navigate(`/review/${pr.repo}/pull/${pr.id}`)}
+                      style={{ padding: "2px 10px", borderRadius: 4, border: "none",
+                        background: "#2563eb", color: "#fff", cursor: "pointer", fontSize: 12 }}>
+                      Review
+                    </button>
+                }
               </td>
             </tr>
           ))}
