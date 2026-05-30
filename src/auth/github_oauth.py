@@ -47,7 +47,9 @@ def exchange_code_for_token(code: str, client_id: str,
         with urllib.request.urlopen(req, timeout=15) as resp:
             result = json.loads(resp.read())
             return result.get("access_token")
-    except Exception:
+    except Exception as e:
+        import sys
+        print(f"OAuth exchange error: {e}", file=sys.stderr)
         return None
 
 

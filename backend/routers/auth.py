@@ -32,19 +32,26 @@ def callback(code: str, state: str = ""):
     """Exchange OAuth code for access token."""
     from src.auth.github_oauth import exchange_code_for_token, get_oauth_user
 
+    import logging
+    logger = logging.getLogger("auth")
+
     client_id = os.getenv("GITHUB_CLIENT_ID", "")
     client_secret = os.getenv("GITHUB_CLIENT_SECRET", "")
+    logger.info(f"Callback: client_id={client_id[:10]}..., code_len={len(code)}")
+
     if not client_id or not client_secret:
         return {"error": "GitHub OAuth not configured"}
 
     token = exchange_code_for_token(code, client_id, client_secret)
     if not token:
+        logger.error(f"Token exchange failed for code: {code[:10]}...")
         return {"error": "Failed to exchange code"}
 
     user = get_oauth_user(token)
     if not user:
         return {"error": "Failed to fetch user"}
 
+    logger.info(f"OAuth success: {user.login}")
     return {
         "access_token": token,
         "token_type": "bearer",

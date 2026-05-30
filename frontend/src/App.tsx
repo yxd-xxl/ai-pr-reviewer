@@ -10,7 +10,8 @@ import Settings from "./pages/Settings";
 function OAuthCallback() {
   const params = new URLSearchParams(window.location.search);
   const code = params.get("code");
-  if (code) {
+  if (code && !(window as any).__oauth_called) {
+    (window as any).__oauth_called = true;
     fetch(`http://localhost:8000/api/v1/auth/callback?code=${code}`, { method: "POST" })
       .then(r => r.json())
       .then(d => {
