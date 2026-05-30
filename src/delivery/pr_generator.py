@@ -4,7 +4,8 @@ import json
 import urllib.request
 import urllib.error
 
-from src.core.types import ReviewResult, PullRequest, Finding
+from src.core.types import ReviewResult, PullRequest, Finding, FixProposal
+from src.delivery.fix_safety import check_patch_applies, check_syntax, check_no_destructive
 
 
 def generate_fix_pr(result: ReviewResult, pr: PullRequest, token: str,
@@ -21,6 +22,19 @@ def generate_fix_pr(result: ReviewResult, pr: PullRequest, token: str,
 
     if not fixable:
         actions.append("No verified fix patches available.")
+        return actions
+
+    # Safety checks on each fix patch
+    for f in fixable:
+        if f.fix_patch:
+            if not check_patch_applies(f.fix_patch, ""):
+                actions.append(f"[WARNING] {f.location.file}: patch may not apply cleanly")
+            if not check_no_destructive(f.fix_patch):
+                actions.append(f"[REJECTED] {f.location.file}: patch appears destructive, skipped")
+                fixable.remove(f)
+
+    if not fixable:
+        actions.append("All fix patches failed safety checks.")
         return actions
 
     # Build fix title and body
