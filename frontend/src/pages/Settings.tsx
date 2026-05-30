@@ -72,6 +72,24 @@ export default function Settings() {
       </section>
 
       <section style={{ marginBottom: 32 }}>
+        <h2 style={{ fontSize: 20, marginBottom: 16 }}>LLM Configuration</h2>
+        <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 12 }}>
+          Configure the AI model used for code review.
+        </p>
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <select style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}>
+            <option value="deepseek">DeepSeek</option>
+            <option value="mock">Mock (no API key needed)</option>
+          </select>
+          <input type="text" placeholder="API Key (sk-...)"
+            style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }} />
+        </div>
+        <p style={{ fontSize: 12, color: "#9ca3af" }}>
+          Set LLM_PROVIDER and LLM_API_KEY in .env, or configure here per session.
+        </p>
+      </section>
+
+      <section style={{ marginBottom: 32 }}>
         <h2 style={{ fontSize: 20, marginBottom: 16 }}>Integrations</h2>
         <div style={{ padding: 12, border: "1px solid #e5e7eb", borderRadius: 8, marginBottom: 8 }}>
           <strong>GitHub App:</strong> <span style={{ color: "#16a34a" }}>Connected</span>

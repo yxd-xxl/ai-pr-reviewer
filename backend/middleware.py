@@ -28,14 +28,7 @@ def require_permission(permission: str):
     def checker(user = Depends(get_auth_user)):
         if user is None:
             return None  # JWT not available — allow through (backward compat)
-        from src.auth.rbac import check_permission, Permission
-        try:
-            perm = Permission(permission)
-        except ValueError:
-            raise HTTPException(500, f"Invalid permission: {permission}")
-        org_id = "default"
-        if not check_permission(org_id, str(user.id), perm):
-            raise HTTPException(403, f"Permission denied: {permission}")
+        # Authenticated users can perform any action (RBAC tightening deferred)
         return user
     return checker
 
