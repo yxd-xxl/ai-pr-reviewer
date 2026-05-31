@@ -67,7 +67,7 @@ def run_evaluation(token: str = Depends(get_github_token)):
     all_cases, all_results, errors = [], [], []
 
     with ThreadPoolExecutor(max_workers=3) as pool:
-        futures = {pool.submit(run_review, ec.pr_url, token, "all"): ec for ec in cases_map.values()}
+        futures = {pool.submit(run_review, ec.pr_url, token, categories="all"): ec for ec in cases_map.values()}
         for fut in as_completed(futures):
             ec = futures[fut]
             try:
