@@ -16,5 +16,47 @@
     "recall": 0.0,
     "f1": 0.0,
     "evaluated_at": "2026-05-31T20:59:58.909181"
+  },
+  {
+    "precision": 1.0,
+    "recall": 0.125,
+    "f1": 0.2222222222222222,
+    "tp": 3,
+    "fp": 0,
+    "fn": 21,
+    "evaluated_at": "2026-05-31T21:52:23.434777",
+    "model": "deepseek-chat",
+    "categories": [
+      {
+        "cat": "performance",
+        "precision": 1.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "analyzer": "PerformanceAnalyzer",
+        "tp": 0,
+        "fp": 0,
+        "fn": 8
+      },
+      {
+        "cat": "security",
+        "precision": 1.0,
+        "recall": 0.16666666666666666,
+        "f1": 0.2857142857142857,
+        "analyzer": "SecurityAnalyzer",
+        "tp": 1,
+        "fp": 0,
+        "fn": 5
+      },
+      {
+        "cat": "bug",
+        "precision": 1.0,
+        "recall": 0.2,
+        "f1": 0.33333333333333337,
+        "analyzer": "BugAnalyzer",
+        "tp": 2,
+        "fp": 0,
+        "fn": 8
+      }
+    ]
   }
 ]

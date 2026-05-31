@@ -80,9 +80,9 @@ export default function ReviewQueue() {
         }));
         setBulkResults(results);
       } else {
-        setError(d.message || "Batch review failed");
+        setError(d.message || d.detail || "Batch review failed");
       }
-    } catch { setError("Batch review failed"); }
+    } catch (e: any) { setError("Batch review failed: " + (e.message || "network error")); }
     setBulkRunning(false);
   }
 
