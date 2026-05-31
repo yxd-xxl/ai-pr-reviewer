@@ -20,7 +20,7 @@ export default function ReviewQueue() {
   const [prs, setPrs] = useState<PR[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState(getCachedFilter());
+  const [filter, setFilter] = useState(() => sessionStorage.getItem("pr_filter") || "open");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [bulkResults, setBulkResults] = useState<any[] | null>(null);
   const [bulkRunning, setBulkRunning] = useState(false);
