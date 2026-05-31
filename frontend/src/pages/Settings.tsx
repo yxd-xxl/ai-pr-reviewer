@@ -58,11 +58,11 @@ export default function Settings() {
         <h2 style={{ fontSize: 20, marginBottom: 16 }}>Review Rules</h2>
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Min Confidence: {confidence}%</label>
-          <input type="range" min={0} max={100} value={confidence} onChange={e => setConfidence(Number(e.target.value))} style={{ width: "100%" }} />
+          <input type="range" min={0} max={100} value={confidence} onChange={e => { const v = Number(e.target.value); setConfidence(v); localStorage.setItem("ai_pr_min_confidence", String(v)); }} style={{ width: "100%" }} />
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Max Inline Comments: {maxComments}</label>
-          <input type="range" min={0} max={30} value={maxComments} onChange={e => setMaxComments(Number(e.target.value))} style={{ width: "100%" }} />
+          <input type="range" min={0} max={30} value={maxComments} onChange={e => { const v = Number(e.target.value); setMaxComments(v); localStorage.setItem("ai_pr_max_comments", String(v)); }} style={{ width: "100%" }} />
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Review Mode</label>

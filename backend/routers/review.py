@@ -29,7 +29,11 @@ def create_review(req: ReviewRequest, token: str = Depends(get_github_token),
                 "model": req.llm_model or os.getenv("LLM_MODEL", "deepseek-chat"),
             }
         from src.core.config import ReviewConfig
-        config = ReviewConfig(mode=req.mode or "balanced")
+        config = ReviewConfig(
+            mode=req.mode or "balanced",
+            min_confidence=req.min_confidence if req.min_confidence > 0 else 0.65,
+            max_inline_comments=req.max_inline_comments if req.max_inline_comments > 0 else 10,
+        )
         pr, files, result = run_review(req.pr_url, token, config=config,
                                        llm_config=llm_cfg, categories=req.categories)
 

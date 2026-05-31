@@ -53,6 +53,8 @@ class ReviewRequest(BaseModel):
     llm_provider: str = ""
     llm_api_key: str = ""
     llm_model: str = ""
+    min_confidence: float = 0.0
+    max_inline_comments: int = 0
 
 
 class FindingResponse(BaseModel):

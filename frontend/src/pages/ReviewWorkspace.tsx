@@ -44,6 +44,8 @@ export default function ReviewWorkspace() {
           llm_provider: localStorage.getItem("ai_pr_llm_provider") || "",
           llm_api_key: localStorage.getItem("ai_pr_llm_key") || "",
           llm_model: localStorage.getItem("ai_pr_llm_model") || "",
+          min_confidence: Number(localStorage.getItem("ai_pr_min_confidence") || 0),
+          max_inline_comments: Number(localStorage.getItem("ai_pr_max_comments") || 0),
         }),
       });
       const data = await resp.json();
