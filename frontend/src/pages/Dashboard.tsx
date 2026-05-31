@@ -38,10 +38,10 @@ export default function Dashboard() {
       {/* Stat cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 24 }}>
         {[
-          { icon: "📋", label: "Total Reviews", value: reviews.length, sub: `${repos.length} repositories`, color: "#3b82f6" },
-          { icon: "🔍", label: "Total Findings", value: totalFindings, sub: `${reviews.length > 0 ? (totalFindings / reviews.length).toFixed(1) : "0"} per review`, color: "#8b5cf6" },
-          { icon: "⚠️", label: "Avg Risk Score", value: `${avgRisk}/100`, sub: avgRisk >= 40 ? "Needs attention" : avgRisk >= 15 ? "Moderate" : "Healthy", color: avgRisk >= 40 ? "#ef4444" : avgRisk >= 15 ? "#f97316" : "#10b981" },
-          { icon: "🏷️", label: "High Risk PRs", value: riskDist.critical + riskDist.high, sub: `${riskDist.critical} critical · ${riskDist.high} high`, color: (riskDist.critical+riskDist.high) > 0 ? "#ef4444" : "#10b981" },
+          { icon: "📋", label: t("Total Reviews"), value: reviews.length, sub: `${repos.length} ${t("repositories")}`, color: "#3b82f6" },
+          { icon: "🔍", label: t("Total Findings"), value: totalFindings, sub: `${reviews.length > 0 ? (totalFindings / reviews.length).toFixed(1) : "0"} ${t("per review")}`, color: "#8b5cf6" },
+          { icon: "⚠️", label: t("Avg Risk Score"), value: `${avgRisk}/100`, sub: t(avgRisk >= 40 ? "Needs attention" : avgRisk >= 15 ? "Moderate" : "Healthy"), color: avgRisk >= 40 ? "#ef4444" : avgRisk >= 15 ? "#f97316" : "#10b981" },
+          { icon: "🏷️", label: t("High Risk PRs"), value: riskDist.critical + riskDist.high, sub: `${riskDist.critical} critical · ${riskDist.high} high`, color: (riskDist.critical+riskDist.high) > 0 ? "#ef4444" : "#10b981" },
         ].map(m => (
           <div key={m.label} style={{ padding: "18px 20px", borderRadius: 12, background: "#fff", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
@@ -58,9 +58,9 @@ export default function Dashboard() {
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 20, marginBottom: 24 }}>
         {/* Recent Reviews */}
         <div style={{ padding: 20, borderRadius: 12, background: "#fff", border: "1px solid #e2e8f0" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 16px", color: "#0f172a" }}>Recent Reviews</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 16px", color: "#0f172a" }}>{t("Recent Reviews")}</h3>
           {reviews.length === 0 ? (
-            <p style={{ color: "#94a3b8", fontSize: 14, textAlign: "center", padding: 30 }}>No reviews yet. Go to the Review Queue to start.</p>
+            <p style={{ color: "#94a3b8", fontSize: 14, textAlign: "center", padding: 30 }}>{t("No reviews yet. Go to the Review Queue to start.")}</p>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead><tr style={{ borderBottom: "1px solid #e2e8f0" }}>
@@ -99,9 +99,9 @@ export default function Dashboard() {
 
         {/* Risk Distribution */}
         <div style={{ padding: 20, borderRadius: 12, background: "#fff", border: "1px solid #e2e8f0" }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 16px", color: "#0f172a" }}>Risk Distribution</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 16px", color: "#0f172a" }}>{t("Risk Distribution")}</h3>
           {reviews.length === 0 ? (
-            <p style={{ color: "#94a3b8", fontSize: 14, textAlign: "center", padding: 30 }}>No data yet.</p>
+            <p style={{ color: "#94a3b8", fontSize: 14, textAlign: "center", padding: 30 }}>{t("No data yet.")}</p>
           ) : (
             <div>
               {[{ label: "Critical", count: riskDist.critical, color: "#ef4444" },
@@ -125,12 +125,12 @@ export default function Dashboard() {
 
       {/* Quick actions */}
       <div style={{ padding: 20, borderRadius: 12, background: "#fff", border: "1px solid #e2e8f0" }}>
-        <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 14px", color: "#0f172a" }}>Quick Actions</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 14px", color: "#0f172a" }}>{t("Quick Actions")}</h3>
         <div style={{ display: "flex", gap: 12 }}>
-          {[{ label: "Review Queue", to: "/review-queue", icon: "📋" },
-            { label: "Select Repository", to: "/connect", icon: "📂" },
-            { label: "Evaluation", to: "/evaluation", icon: "📊" },
-            { label: "Settings", to: "/settings", icon: "⚙️" }].map(a => (
+          {[{ label: t("Review Queue"), to: "/review-queue", icon: "📋" },
+            { label: t("Select Repository"), to: "/connect", icon: "📂" },
+            { label: t("Evaluation"), to: "/evaluation", icon: "📊" },
+            { label: t("Settings"), to: "/settings", icon: "⚙️" }].map(a => (
             <button key={a.to} onClick={() => navigate(a.to)}
               style={{ padding: "12px 20px", borderRadius: 10, border: "1px solid #e2e8f0", background: "#f8fafc", cursor: "pointer", fontSize: 13, fontWeight: 500, color: "#0f172a", display: "flex", alignItems: "center", gap: 8 }}>
               {a.icon} {a.label}
