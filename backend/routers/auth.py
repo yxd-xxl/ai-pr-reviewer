@@ -1,11 +1,68 @@
-"""Auth router — OAuth callback, JWT login, token refresh, user profile."""
+"""Auth router — register, login, OAuth callback, JWT, token refresh."""
 
 import os
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from backend.dependencies import get_token, get_current_user
 from backend.models import UserResponse
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+
+
+class RegisterRequest(BaseModel):
+    email: str = ""
+    phone: str = ""
+    password: str = ""
+    name: str = ""
+
+
+class LoginRequest(BaseModel):
+    email: str = ""
+    phone: str = ""
+    password: str = ""
+
+
+@router.post("/register")
+def register(req: RegisterRequest):
+    """Register a new account by email or phone."""
+    from src.store.db import UserRepo
+    from backend.auth import issue_jwt
+    db = UserRepo()
+    try:
+        if req.email:
+            user = db.register_by_email(req.email, req.password, req.name)
+        elif req.phone:
+            user = db.register_by_phone(req.phone, req.password, req.name)
+        else:
+            return {"error": "Email or phone required"}
+        if not user:
+            return {"error": "Account already exists"}
+        jwt = issue_jwt(user["id"], user["login"], 0)
+        return {"access_token": jwt, "token_type": "bearer", "user": user}
+    finally:
+        db.close()
+
+
+@router.post("/login")
+def login(req: LoginRequest):
+    """Login by email or phone with password."""
+    from src.store.db import UserRepo
+    from backend.auth import issue_jwt
+    db = UserRepo()
+    try:
+        if req.email:
+            user = db.authenticate_by_email(req.email, req.password)
+        elif req.phone:
+            user = db.authenticate_by_phone(req.phone, req.password)
+        else:
+            return {"error": "Email or phone required"}
+        if not user:
+            return {"error": "Invalid credentials"}
+        github_id = user.get("github_id") or 0
+        jwt = issue_jwt(user["id"], user["login"], github_id)
+        return {"access_token": jwt, "token_type": "bearer", "user": {"id": user["id"], "login": user["login"], "email": user.get("email"), "phone": user.get("phone")}}
+    finally:
+        db.close()
 
 
 @router.get("/me", response_model=UserResponse)

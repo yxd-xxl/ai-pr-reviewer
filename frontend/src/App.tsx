@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import NavBar from "./components/NavBar";
 import Connect from "./pages/Connect";
+import Register from "./pages/Register";
+import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import ReviewQueue from "./pages/ReviewQueue";
 import ReviewWorkspace from "./pages/ReviewWorkspace";
@@ -38,7 +40,10 @@ export default function App() {
       <NavBar />
       <Routes>
         <Route path="/" element={<Connect />} />
+        <Route path="/login" element={<Connect />} />
         <Route path="/connect" element={<Connect />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/callback" element={<OAuthCallback />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/review-queue" element={<ReviewQueue />} />

@@ -5,13 +5,15 @@ All foreign keys use ON DELETE CASCADE for clean referential integrity.
 """
 
 SCHEMA_SQL = """
--- Users: local account linked to GitHub identity
+-- Users: account linked to GitHub, email, or phone
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    github_id INTEGER UNIQUE NOT NULL,
+    github_id INTEGER UNIQUE,
     login TEXT NOT NULL,
     name TEXT,
-    email TEXT,
+    email TEXT UNIQUE,
+    phone TEXT UNIQUE,
+    password_hash TEXT,
     avatar_url TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))

@@ -208,6 +208,48 @@ class UserRepo:
         ).fetchone()
         return row["access_token"] if row else None
 
+    def register_by_email(self, email: str, password: str, name: str = "") -> dict | None:
+        import hashlib
+        existing = self._conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
+        if existing:
+            return None
+        pw_hash = hashlib.sha256(password.encode()).hexdigest()
+        cur = self._conn.execute(
+            "INSERT INTO users (login, name, email, password_hash) VALUES (?,?,?,?)",
+            (name or email.split("@")[0], name, email, pw_hash)
+        )
+        self._conn.commit()
+        return {"id": cur.lastrowid, "login": name or email.split("@")[0], "email": email}
+
+    def register_by_phone(self, phone: str, password: str, name: str = "") -> dict | None:
+        import hashlib
+        existing = self._conn.execute("SELECT id FROM users WHERE phone=?", (phone,)).fetchone()
+        if existing:
+            return None
+        pw_hash = hashlib.sha256(password.encode()).hexdigest()
+        cur = self._conn.execute(
+            "INSERT INTO users (login, name, phone, password_hash) VALUES (?,?,?,?)",
+            (name or phone, name, phone, pw_hash)
+        )
+        self._conn.commit()
+        return {"id": cur.lastrowid, "login": name or phone, "phone": phone}
+
+    def authenticate_by_email(self, email: str, password: str) -> dict | None:
+        import hashlib
+        pw_hash = hashlib.sha256(password.encode()).hexdigest()
+        row = self._conn.execute(
+            "SELECT * FROM users WHERE email=? AND password_hash=?", (email, pw_hash)
+        ).fetchone()
+        return dict(row) if row else None
+
+    def authenticate_by_phone(self, phone: str, password: str) -> dict | None:
+        import hashlib
+        pw_hash = hashlib.sha256(password.encode()).hexdigest()
+        row = self._conn.execute(
+            "SELECT * FROM users WHERE phone=? AND password_hash=?", (phone, pw_hash)
+        ).fetchone()
+        return dict(row) if row else None
+
     def close(self):
         self._conn.close()
 

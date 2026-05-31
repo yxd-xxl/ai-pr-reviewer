@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 const API = "http://localhost:8000";
 
@@ -77,27 +77,53 @@ export default function Connect() {
     setLoading(false);
   }
 
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+
+  async function handleEmailLogin() {
+    setError(""); setLoading(true);
+    try {
+      const r = await fetch(`${API}/api/v1/auth/login`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      });
+      const d = await r.json();
+      if (d.access_token) { localStorage.setItem("ai_pr_token", d.access_token); setUser(d.user); }
+      else setError(d.error || "Invalid credentials");
+    } catch { setError("Cannot reach API server."); }
+    setLoading(false);
+  }
+
   // Step 1: Not logged in → show login
   if (!user) {
     return (
-      <div style={{ maxWidth: 480, margin: "80px auto", padding: 32, textAlign: "center" }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8 }}>AI PR Reviewer</h1>
-        <p style={{ color: "#6b7280", marginBottom: 32 }}>AI-driven code review for your pull requests.</p>
-        {error && <div style={{ padding: 12, background: "#fee2e2", color: "#dc2626", borderRadius: 8, marginBottom: 16 }}>{error}</div>}
+      <div style={{ maxWidth: 440, margin: "60px auto", padding: 32 }}>
+        <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 4, textAlign: "center" }}>AI PR Reviewer</h1>
+        <p style={{ color: "#6b7280", marginBottom: 24, textAlign: "center" }}>Sign in to your account</p>
+        {error && <div style={{ padding: 10, background: "#fee2e2", color: "#dc2626", borderRadius: 6, marginBottom: 16, fontSize: 13 }}>{error}</div>}
+
+        <input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)}
+          placeholder="Email address" onKeyDown={e => e.key === "Enter" && handleEmailLogin()}
+          style={{ width: "100%", padding: "10px 14px", fontSize: 14, borderRadius: 6, border: "1px solid #d1d5db", marginBottom: 10, boxSizing: "border-box" }} />
+        <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)}
+          placeholder="Password" onKeyDown={e => e.key === "Enter" && handleEmailLogin()}
+          style={{ width: "100%", padding: "10px 14px", fontSize: 14, borderRadius: 6, border: "1px solid #d1d5db", marginBottom: 14, boxSizing: "border-box" }} />
+        <button onClick={handleEmailLogin} disabled={loading || !loginEmail || !loginPassword}
+          style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", fontSize: 15, fontWeight: 600, cursor: (loginEmail && loginPassword) ? "pointer" : "default", background: (loginEmail && loginPassword) ? "#2563eb" : "#d1d5db", color: "#fff", marginBottom: 16 }}>
+          {loading ? "Signing in..." : "Sign in"}
+        </button>
+
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ flex: 1, height: 1, background: "#e5e7eb" }} /><span style={{ padding: "0 12px", color: "#9ca3af", fontSize: 13 }}>or</span><div style={{ flex: 1, height: 1, background: "#e5e7eb" }} />
+        </div>
+
         <button onClick={handleGitHubLogin} disabled={loading}
-          style={{ width: "100%", padding: 14, fontSize: 16, fontWeight: 600, borderRadius: 8, border: "none",
-            cursor: loading ? "default" : "pointer", background: "#24292f", color: "#fff", marginBottom: 24 }}>
+          style={{ width: "100%", padding: 12, fontSize: 15, fontWeight: 600, borderRadius: 8, border: "none", cursor: loading ? "default" : "pointer", background: "#24292f", color: "#fff", marginBottom: 20 }}>
           {loading ? "Connecting..." : "Sign in with GitHub"}
         </button>
-        <div style={{ color: "#9ca3af", marginBottom: 24, fontSize: 14 }}>
-          Sign in with your GitHub account.<br />An account will be created automatically on first sign-in.
-        </div>
-        <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 24, marginTop: 24 }}>
-          <p style={{ fontSize: 13, color: "#9ca3af", marginBottom: 12 }}>Other methods coming soon:</p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
-            <button disabled style={{ padding: "10px 24px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#f9fafb", color: "#9ca3af", fontSize: 14, cursor: "not-allowed" }}>Email</button>
-            <button disabled style={{ padding: "10px 24px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#f9fafb", color: "#9ca3af", fontSize: 14, cursor: "not-allowed" }}>Phone</button>
-          </div>
+
+        <div style={{ textAlign: "center", fontSize: 14, color: "#6b7280" }}>
+          Don't have an account? <Link to="/register" style={{ color: "#2563eb" }}>Register</Link>
         </div>
       </div>
     );
