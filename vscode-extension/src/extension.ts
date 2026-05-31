@@ -9,6 +9,7 @@ interface Finding {
 
 let findingsProvider: FindingsTreeProvider;
 
+/** Activate the AI PR Reviewer extension: register commands and tree data provider. */
 export function activate(context: vscode.ExtensionContext) {
   findingsProvider = new FindingsTreeProvider();
   vscode.window.registerTreeDataProvider("ai-pr-reviewer.findings", findingsProvider);
@@ -52,6 +53,28 @@ export function activate(context: vscode.ExtensionContext) {
   (globalThis as any).__aiDecorations = decorationType;
 }
 
+/** Shared API call with timeout and error handling */
+async function callReviewApi(body: object): Promise<Finding[]> {
+  const config = vscode.workspace.getConfiguration("aiPrReviewer");
+  const apiUrl = config.get<string>("apiUrl", "http://localhost:8000");
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+
+  try {
+    const response = await fetch(`${apiUrl}/api/v1/review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`API ${response.status}: ${response.statusText}`);
+    const data = await response.json();
+    return data.findings || [];
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function reviewStagedChanges() {
   const gitExt = vscode.extensions.getExtension("vscode.git");
   if (!gitExt) {
@@ -65,50 +88,27 @@ async function reviewStagedChanges() {
     cancellable: true,
   }, async () => {
     try {
-      const config = vscode.workspace.getConfiguration("aiPrReviewer");
-      const apiUrl = config.get<string>("apiUrl", "http://localhost:8000");
-      const response = await fetch(`${apiUrl}/api/v1/review`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pr_url: "local-diff", categories: "all" }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API ${response.status}`);
-      }
-
-      const data = await response.json();
-      findingsProvider.setFindings(data.findings || []);
-      vscode.window.showInformationMessage(
-        `AI Review complete: ${data.findings?.length || 0} finding(s)`
-      );
+      const findings = await callReviewApi({ pr_url: "local-diff", categories: "all" });
+      findingsProvider.setFindings(findings);
+      vscode.window.showInformationMessage(`AI Review complete: ${findings.length} finding(s)`);
     } catch (e: any) {
       vscode.window.showErrorMessage(`AI Review failed: ${e.message}`);
     }
   });
 }
 
+/** Review the currently active file in the editor */
 async function reviewCurrentFile(editor: vscode.TextEditor) {
   const document = editor.document;
-  const text = document.getText();
   await vscode.window.withProgress({
     location: vscode.ProgressLocation.Notification,
     title: `AI PR Reviewer: analyzing ${document.fileName.split("/").pop()}...`,
     cancellable: true,
   }, async () => {
     try {
-      const config = vscode.workspace.getConfiguration("aiPrReviewer");
-      const apiUrl = config.get<string>("apiUrl", "http://localhost:8000");
-      const response = await fetch(`${apiUrl}/api/v1/review`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pr_url: "local-file", categories: "all" }),
-      });
-      const data = await response.json();
-      findingsProvider.setFindings(data.findings || []);
-      vscode.window.showInformationMessage(
-        `File review complete: ${data.findings?.length || 0} finding(s)`
-      );
+      const findings = await callReviewApi({ pr_url: "local-file", categories: "all" });
+      findingsProvider.setFindings(findings);
+      vscode.window.showInformationMessage(`File review complete: ${findings.length} finding(s)`);
     } catch (e: any) {
       vscode.window.showErrorMessage(`Review failed: ${e.message}`);
     }
@@ -121,7 +121,8 @@ class FindingsTreeProvider implements vscode.TreeDataProvider<FindingItem> {
   private _findings: Finding[] = [];
 
   setFindings(findings: Finding[]) {
-    this._findings = findings;
+    const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+    this._findings = [...findings].sort((a, b) => (severityOrder[a.severity] || 9) - (severityOrder[b.severity] || 9));
     this._onDidChange.fire(undefined);
   }
 
@@ -137,10 +138,7 @@ class FindingsTreeProvider implements vscode.TreeDataProvider<FindingItem> {
   }
 
   getChildren(): FindingItem[] {
-    const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-    return this._findings
-      .sort((a, b) => (severityOrder[a.severity] || 9) - (severityOrder[b.severity] || 9))
-      .map((f) => {
+    return this._findings.map((f) => {
         const label = `[${f.severity.toUpperCase()}] ${f.category} — ${f.title}`;
         const item = new FindingItem(label, vscode.TreeItemCollapsibleState.None);
         item.description = `${f.location.file}:${f.location.line || "?"}`;
