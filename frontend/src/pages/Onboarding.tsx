@@ -30,7 +30,16 @@ export default function Onboarding() {
   }
 
   function saveLlmConfig() {
-    if (llmKey) { localStorage.setItem("ai_pr_llm_provider", llmProvider); localStorage.setItem("ai_pr_llm_key", llmKey); }
+    localStorage.setItem("ai_pr_llm_provider", llmProvider);
+    if (llmKey) localStorage.setItem("ai_pr_llm_key", llmKey);
+    // Persist to backend
+    const token = localStorage.getItem("ai_pr_token") || "";
+    if (token) {
+      fetch(`${API}/api/v1/settings`, {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ llm_provider: llmProvider, llm_api_key: llmKey }),
+      }).catch(() => {});
+    }
     setLlmDone(true);
   }
 
