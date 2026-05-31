@@ -78,8 +78,10 @@ export default function Settings() {
         </p>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           <select style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}>
-            <option value="deepseek">DeepSeek</option>
-            <option value="mock">Mock (no API key needed)</option>
+            <option value="deepseek">DeepSeek (Recommended)</option>
+            <option value="anthropic">Anthropic Claude</option>
+            <option value="openai">OpenAI GPT-4o</option>
+            <option value="mock">Mock (no API key)</option>
           </select>
           <input type="text" placeholder="API Key (sk-...)"
             style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }} />
