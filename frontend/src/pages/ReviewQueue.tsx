@@ -64,29 +64,25 @@ export default function ReviewQueue() {
   async function runBulkReview() {
     const toReview = selected.size > 0 ? prs.filter(p => selected.has(p.number)) : prs;
     setBulkConfig(false); setBulkRunning(true); setBulkResults(null);
-    setBulkProgress({ done: 0, total: toReview.length });
 
-    const results: any[] = [];
-    for (let i = 0; i < toReview.length; i++) {
-      const pr = toReview[i];
-      try {
-        const resp = await fetch(`${API}/api/v1/review`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ pr_url: pr.html_url, categories: bulkCategories, mode: bulkMode }),
-        });
-        const d = await resp.json();
-        results.push({
-          url: pr.html_url, number: pr.number, title: pr.title,
-          status: "ok", findings: d.findings?.length || 0,
-          risk_score: d.risk_score || 0, risk_level: d.risk_level || "low",
-        });
-      } catch {
-        results.push({ url: pr.html_url, number: pr.number, title: pr.title, status: "error" });
+    try {
+      const resp = await fetch(`${API}/api/v1/batch-review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ pr_urls: toReview.map(p => p.html_url), categories: bulkCategories, mode: bulkMode }),
+      });
+      const d = await resp.json();
+      if (d.status === "ok") {
+        const results = d.results.map((r: any) => ({
+          url: r.url, number: parseInt(r.url.split("/").pop()), title: r.title || "",
+          status: r.status, findings: r.findings || 0,
+          risk_score: r.risk_score || 0, risk_level: r.risk_level || "low",
+        }));
+        setBulkResults(results);
+      } else {
+        setError(d.message || "Batch review failed");
       }
-      setBulkProgress({ done: i + 1, total: toReview.length });
-    }
-    setBulkResults(results);
+    } catch { setError("Batch review failed"); }
     setBulkRunning(false);
   }
 
