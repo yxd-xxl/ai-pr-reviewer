@@ -49,6 +49,8 @@ export default function ReviewQueue() {
 
   if (!repo || !token) return null;
 
+  const [owner, repoName] = repo.split("/");
+
   return (
     <div style={{ maxWidth: 1200, margin: "0 auto", padding: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
