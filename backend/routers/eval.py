@@ -46,7 +46,7 @@ def run_evaluation(token: str = Depends(get_token)):
     from src.eval.runner import evaluate_result
     from src.eval.metrics import EvalCase, compute_metrics
 
-    case_files = sorted(glob.glob(str(EVAL_DIR / "*.json")))
+    case_files = sorted([f for f in glob.glob(str(EVAL_DIR / "*.json")) if not f.endswith(".disabled")])
     if not case_files:
         return {"status": "error", "message": f"No eval cases found in {EVAL_DIR}"}
 
