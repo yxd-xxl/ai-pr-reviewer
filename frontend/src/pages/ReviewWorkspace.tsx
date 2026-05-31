@@ -33,6 +33,17 @@ export default function ReviewWorkspace() {
   const [mode, setMode] = useState(() => localStorage.getItem("ai_pr_mode") || "balanced");
   const [postStatus, setPostStatus] = useState("");
 
+  // Auto-load stored review if it exists
+  useEffect(() => {
+    fetch(`${API}/api/v1/review/by-pr?pr_url=${encodeURIComponent(prUrl)}`)
+      .then(r => r.json()).then(d => {
+        if (d.status === "ok" && d.findings?.length > 0) {
+          setFindings(d.findings);
+          setSummary(d.review?.findings_count ? "" : "");
+        }
+      }).catch(() => {});
+  }, [prUrl]);
+
   async function runAnalysis() {
     setLoading(true); setError(""); setFindings([]);
     try {
