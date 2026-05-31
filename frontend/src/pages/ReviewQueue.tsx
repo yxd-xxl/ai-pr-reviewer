@@ -109,6 +109,37 @@ export default function ReviewQueue() {
           </tbody>
         </table>
       }
+
+      {/* Bulk Review section */}
+      {prs.length > 0 && (
+        <div style={{ marginTop: 32, padding: 16, border: "1px solid #e5e7eb", borderRadius: 8 }}>
+          <h3 style={{ fontSize: 16, marginBottom: 8 }}>Bulk Review</h3>
+          <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>
+            Run analysis on all {prs.length} visible PRs in parallel (max 3 at a time).
+          </p>
+          <button onClick={async () => {
+            const urls = prs.map(p => p.html_url);
+            setLoading(true);
+            try {
+              const r = await fetch(`${API}/api/v1/batch-review`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ pr_urls: urls, categories: "all" }),
+              });
+              const d = await r.json();
+              let msg = `Batch review complete:\n`;
+              d.results?.forEach((r: any) => {
+                msg += `${r.status === "ok" ? "✓" : "✗"} ${r.url.split("/").pop()}: ${r.findings || 0} findings, risk ${r.risk_score || 0}\n`;
+              });
+              alert(msg);
+            } catch { alert("Batch review failed."); }
+            setLoading(false);
+          }}
+            style={{ padding: "8px 16px", borderRadius: 6, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer", fontSize: 13 }}>
+            Run Batch Review ({prs.length} PRs)
+          </button>
+        </div>
+      )}
     </div>
   );
 }

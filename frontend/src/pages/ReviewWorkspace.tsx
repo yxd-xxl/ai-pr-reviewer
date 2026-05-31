@@ -142,6 +142,14 @@ export default function ReviewWorkspace() {
                 style={{ width: "100%", marginTop: 8, padding: "6px", borderRadius: 6, border: "1px solid #d1d5db", background: "#fff", cursor: "pointer", fontSize: 12 }}>
                 Download Report (JSON)
               </button>
+              <button onClick={async () => {
+                const r = await fetch(`${API}/api/v1/post-comments?pr_url=${encodeURIComponent(prUrl)}&dry_run=false`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+                const d = await r.json();
+                alert(d.status === "ok" ? `Posted ${d.findings_count} findings as inline comments.` : `Failed: ${d.message}`);
+              }}
+                style={{ width: "100%", marginTop: 4, padding: "6px", borderRadius: 6, border: "1px solid #16a34a", background: "#fff", color: "#16a34a", cursor: "pointer", fontSize: 12 }}>
+                Post Comments to PR
+              </button>
             </div>
           )}
 

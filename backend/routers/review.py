@@ -125,3 +125,47 @@ def create_pr_endpoint(owner: str, repo: str, title: str, description: str = "",
         return {"status": "error", "message": "No unreviewed changes"}
     result = create_pr_from_changes(owner, repo, token, title, description, changes["head_sha"])
     return {"status": "ok" if result.get("url") else "error", **result}
+
+
+@router.post("/post-comments")
+def post_comments(pr_url: str, token: str = Depends(get_github_token),
+                  dry_run: bool = True):
+    """Post review findings as inline comments on a PR."""
+    from src.pipeline import run_review
+    from src.delivery.github_delivery import GitHubDelivery
+
+    try:
+        pr, files, result = run_review(pr_url, token)
+        delivery = GitHubDelivery(token=token, dry_run=dry_run)
+        actions = delivery.deliver(result, pr)
+        return {"status": "ok", "actions": actions, "findings_count": len(result.findings),
+                "mode": "dry_run" if dry_run else "published"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@router.post("/batch-review")
+def batch_review(pr_urls: list[str], categories: str = "all",
+                 token: str = Depends(get_github_token)):
+    """Run analysis on multiple PRs and return aggregate results."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from src.pipeline import run_review
+
+    results = []
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = {pool.submit(run_review, url, token, categories=categories): url for url in pr_urls}
+        for fut in as_completed(futures):
+            url = futures[fut]
+            try:
+                pr, files, result = fut.result()
+                results.append({
+                    "url": url, "status": "ok",
+                    "title": pr.title, "findings": len(result.findings),
+                    "risk_score": sum(
+                        {"critical": 60, "high": 30, "medium": 12, "low": 3}.get(f.severity, 1)
+                        for f in result.findings
+                    ),
+                })
+            except Exception as e:
+                results.append({"url": url, "status": "error", "message": str(e)})
+    return {"status": "ok", "results": results}
