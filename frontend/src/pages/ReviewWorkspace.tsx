@@ -30,7 +30,7 @@ export default function ReviewWorkspace() {
   const [error, setError] = useState("");
   const [filesCount, setFilesCount] = useState(0);
   const [categories, setCategories] = useState("all");
-  const [mode, setMode] = useState("balanced");
+  const [mode, setMode] = useState(() => localStorage.getItem("ai_pr_mode") || "balanced");
   const [postStatus, setPostStatus] = useState("");
 
   async function runAnalysis() {

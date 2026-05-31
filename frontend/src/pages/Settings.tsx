@@ -66,7 +66,7 @@ export default function Settings() {
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Review Mode</label>
-          <select value={mode} onChange={e => setMode(e.target.value)} style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", width: "100%" }}>
+          <select value={mode} onChange={e => { setMode(e.target.value); localStorage.setItem("ai_pr_mode", e.target.value); }} style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", width: "100%" }}>
             <option value="fast">Fast</option><option value="balanced">Balanced</option><option value="deep">Deep</option>
           </select>
         </div>
