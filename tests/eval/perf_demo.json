@@ -1,0 +1,15 @@
+{
+  "pr_url": "https://github.com/yxd-xxl/ai-pr-reviewer/pull/70",
+  "category": "performance",
+  "expected_titles": [
+    "N+1",
+    "O(n",
+    "unbounded",
+    "cache",
+    "sequential",
+    "parallel",
+    "repeated",
+    "Memory"
+  ],
+  "forbidden_titles": []
+}

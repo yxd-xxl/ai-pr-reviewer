@@ -1,0 +1,17 @@
+{
+  "pr_url": "https://github.com/yxd-xxl/ai-pr-reviewer/pull/69",
+  "category": "bug",
+  "expected_titles": [
+    "None",
+    "null",
+    "AttributeError",
+    "off-by-one",
+    "bare except",
+    "mutable default",
+    "race condition",
+    "Unclosed",
+    "division by zero",
+    "operator precedence"
+  ],
+  "forbidden_titles": []
+}

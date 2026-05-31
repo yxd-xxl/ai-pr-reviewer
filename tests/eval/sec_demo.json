@@ -1,0 +1,15 @@
+{
+  "pr_url": "https://github.com/yxd-xxl/ai-pr-reviewer/pull/68",
+  "category": "security",
+  "expected_titles": [
+    "SQL injection",
+    "Hardcoded",
+    "Command injection",
+    "Path traversal",
+    "pickle",
+    "MD5"
+  ],
+  "forbidden_titles": [
+    "Missing import for tests"
+  ]
+}
