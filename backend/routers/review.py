@@ -19,7 +19,18 @@ def create_review(req: ReviewRequest, token: str = Depends(get_github_token),
 
     try:
         t0 = time.time()
-        pr, files, result = run_review(req.pr_url, token, categories=req.categories)
+        llm_cfg = None
+        if os.getenv("LLM_PROVIDER", "mock") != "mock":
+            llm_cfg = {
+                "provider": os.getenv("LLM_PROVIDER", "deepseek"),
+                "api_key": os.getenv("LLM_API_KEY", ""),
+                "base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
+                "model": os.getenv("LLM_MODEL", "deepseek-chat"),
+            }
+        from src.core.config import ReviewConfig
+        config = ReviewConfig(mode=req.mode or "balanced")
+        pr, files, result = run_review(req.pr_url, token, config=config,
+                                       llm_config=llm_cfg, categories=req.categories)
 
         score = calc_risk(result)
         if score < 15: level = "low"

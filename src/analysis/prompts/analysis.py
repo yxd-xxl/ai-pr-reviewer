@@ -56,8 +56,8 @@ Output format:
       "category": "security|bug|performance|style|architecture",
       "classification": "new|preexisting|nit",
       "title": "short title",
-      "description": "detailed description of the issue",
-      "suggestion": "actionable fix suggestion",
+      "description": "what the issue is AND why it matters — explain the impact in plain terms a junior developer can understand",
+      "suggestion": "specific, actionable fix with example code if possible",
       "line": <new-file-line-number-or-null>,
       "evidence": "copy-paste the exact code from the diff",
       "confidence": 0|25|50|75|100

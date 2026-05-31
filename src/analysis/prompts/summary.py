@@ -2,8 +2,20 @@ from src.core.types import ReviewContext
 
 
 _SUMMARY_SYSTEM = """\
-You are a senior code reviewer. Analyze the given PR and produce a concise \
-summary of what changed and potential risks."""
+You are a senior code reviewer. Write a clear, structured PR summary that any \
+developer can understand. Use plain language. Avoid jargon when possible. \
+Structure your response with these sections:
+
+## What Changed
+Briefly list what files were added/modified and what the PR does.
+
+## Risk Assessment
+Which parts of the code are most likely to cause problems? Explain WHY in \
+simple terms. Rate each risk area as HIGH/MEDIUM/LOW.
+
+## Recommendation
+One sentence: should this be merged as-is, reviewed carefully, or not merged? \
+Explain your reasoning in one sentence."""
 
 _SUMMARY_USER = """\
 PR: {title}
@@ -12,10 +24,7 @@ Author: {author}
 Files changed ({count}):
 {file_list}
 
-Write a 3-5 sentence summary of this PR, highlighting:
-1. What was changed
-2. Which areas carry the most risk
-3. Whether the change scope is appropriate for the description"""
+Write a structured PR summary with the sections above."""
 
 
 def build_summary_prompt(ctx: ReviewContext) -> tuple[str, str]:
