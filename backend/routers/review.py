@@ -19,15 +19,13 @@ def create_review(req: ReviewRequest, token: str = Depends(get_github_token),
 
     try:
         t0 = time.time()
-        llm_cfg = None
         provider = req.llm_provider or os.getenv("LLM_PROVIDER", "mock")
-        if provider != "mock":
-            llm_cfg = {
-                "provider": provider,
-                "api_key": req.llm_api_key or os.getenv("LLM_API_KEY", ""),
-                "base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
-                "model": req.llm_model or os.getenv("LLM_MODEL", "deepseek-chat"),
-            }
+        llm_cfg = {
+            "provider": provider,
+            "api_key": req.llm_api_key or os.getenv("LLM_API_KEY", ""),
+            "base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
+            "model": req.llm_model or os.getenv("LLM_MODEL", "deepseek-chat"),
+        }
         from src.core.config import ReviewConfig
         config = ReviewConfig(
             mode=req.mode or "balanced",
