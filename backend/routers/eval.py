@@ -55,24 +55,33 @@ def run_evaluation(token: str = Depends(get_github_token)):
     if not case_files:
         return {"status": "error", "message": "No eval cases found"}
 
-    # Group by category
+    # Run reviews in parallel (max 3 concurrent)
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    cases_map = {}
+    for cf in case_files:
+        ec = EvalCase.from_file(cf)
+        cases_map[ec.pr_url] = ec
+
     by_category: dict[str, list] = {}
     all_cases, all_results, errors = [], [], []
 
-    for cf in case_files:
-        try:
-            ec = EvalCase.from_file(cf)
-            all_cases.append(ec)
-            _, _, result = run_review(ec.pr_url, token, categories="all")
-            er = evaluate_result(ec, result)
-            all_results.append(er)
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = {pool.submit(run_review, ec.pr_url, token, "all"): ec for ec in cases_map.values()}
+        for fut in as_completed(futures):
+            ec = futures[fut]
+            try:
+                _, _, result = fut.result(timeout=120)
+                er = evaluate_result(ec, result)
+                all_cases.append(ec)
+                all_results.append(er)
 
-            cat = ec.category or "bug"
-            by_category.setdefault(cat, {"cases": [], "results": []})
-            by_category[cat]["cases"].append(ec)
-            by_category[cat]["results"].append(er)
-        except Exception as e:
-            errors.append(f"{Path(cf).name}: {e}")
+                cat = ec.category or "bug"
+                by_category.setdefault(cat, {"cases": [], "results": []})
+                by_category[cat]["cases"].append(ec)
+                by_category[cat]["results"].append(er)
+            except Exception as e:
+                errors.append(f"{ec.pr_url.split('/')[-1]}: {e}")
 
     if not all_results:
         return {"status": "error", "message": f"All {len(case_files)} cases failed.", "errors": errors}
