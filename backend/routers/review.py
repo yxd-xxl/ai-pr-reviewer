@@ -98,6 +98,30 @@ def list_reviews(repo: str = "", limit: int = Query(20, ge=1, le=100)):
         db.close()
 
 
+@router.get("/review/by-pr")
+def get_review_by_pr(pr_url: str):
+    """Get stored review findings for a PR URL."""
+    from src.store.db import ReviewRepo
+    import sqlite3
+    db = ReviewRepo()
+    try:
+        row = db._conn.execute(
+            "SELECT * FROM review_runs WHERE pr_url=? ORDER BY created_at DESC LIMIT 1",
+            (pr_url,)
+        ).fetchone()
+        if not row:
+            return {"status": "not_found"}
+        run_id = row["id"]
+        findings = db.get_findings(run_id)
+        return {
+            "status": "ok",
+            "review": dict(row),
+            "findings": findings,
+        }
+    finally:
+        db.close()
+
+
 @router.get("/review/{review_id}")
 def get_review(review_id: int):
     """Get a specific review by ID."""
