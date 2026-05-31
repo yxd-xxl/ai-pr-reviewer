@@ -45,6 +45,8 @@ const zh: Record<string, string> = {
   "Files": "文件",
   "Critical": "严重",
   "High": "高",
+  "Medium": "中",
+  "Low": "低",
   "Risk": "风险",
   "Click a finding to see details in the right panel.": "点击发现查看右侧面板详情。",
   "No repository selected": "未选择仓库",

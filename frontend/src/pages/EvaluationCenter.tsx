@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { t } from "../i18n";
 
 const API = "http://localhost:8000";
 const COLORS: Record<string, string> = { bug: "#ef4444", security: "#f97316", performance: "#3b82f6", design: "#8b5cf6", failure: "#eab308", quality: "#10b981" };
