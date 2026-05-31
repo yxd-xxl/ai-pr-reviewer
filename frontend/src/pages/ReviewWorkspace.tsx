@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import DiffViewer from "../components/DiffViewer";
 import FindingInspector from "../components/FindingInspector";
 import FileTree from "../components/FileTree";
+import MarkdownRenderer from "../components/MarkdownRenderer";
 import type { Finding } from "../types";
 
 const API = "http://localhost:8000";
@@ -181,20 +182,32 @@ export default function ReviewWorkspace() {
             <p style={{ fontSize: 13 }}>SAST (Bandit/ESLint/staticcheck/Semgrep) + LLM analysis with 6 independent analyzers.</p>
           </div>
         )}
-        {summary && <div style={{ marginBottom: 16, padding: 12, background: "#f9fafb", borderRadius: 8, fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{summary}</div>}
-        {findings.map((f, i) => (
-          <div key={i} onClick={() => setSelectedFinding(f)}
-            style={{ padding: 10, marginBottom: 4, borderRadius: 6, cursor: "pointer",
-              background: selectedFinding === f ? "#dbeafe" : "#fff",
-              border: `1px solid ${selectedFinding === f ? "#2563eb" : "#e5e7eb"}` }}>
-            <span style={{ color: {critical:"#dc2626",high:"#ea580c",medium:"#ca8a04",low:"#2563eb"}[f.severity]||"#6b7280", fontWeight: 600, fontSize: 12 }}>
-              [{f.severity.toUpperCase()}]
-            </span>
-            <span style={{ fontSize: 12, color: "#6b7280", marginLeft: 8 }}>{f.category}</span>
-            <span style={{ marginLeft: 8, fontSize: 14 }}>{f.title}</span>
-            <span style={{ float: "right", fontSize: 11, color: "#9ca3af" }}>{f.location.file}:{f.location.line}</span>
+        {summary && (
+          <div style={{ marginBottom: 20, padding: 16, background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+            <MarkdownRenderer text={summary} />
           </div>
-        ))}
+        )}
+        {findings.length > 0 && <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Findings ({findings.length})</h3>}
+        {findings.map((f, i) => {
+          const sevColor = {critical:"#dc2626",high:"#ea580c",medium:"#ca8a04",low:"#2563eb"}[f.severity]||"#6b7280";
+          return (
+          <div key={i} onClick={() => setSelectedFinding(f)}
+            style={{ padding: "10px 14px", marginBottom: 6, borderRadius: 8, cursor: "pointer",
+              background: selectedFinding === f ? "#e8f0fe" : "#fff",
+              border: `1px solid ${selectedFinding === f ? "#2563eb" : "#e5e7eb"}`,
+              borderLeft: `4px solid ${sevColor}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <span style={{
+                padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 700, color: "#fff", background: sevColor,
+              }}>{f.severity.toUpperCase()}</span>
+              <span style={{
+                padding: "2px 8px", borderRadius: 4, fontSize: 11, background: "#f3f4f6", color: "#374151",
+              }}>{f.category}</span>
+              <span style={{ fontSize: 11, color: "#9ca3af", marginLeft: "auto" }}>{f.location.file}:{f.location.line}</span>
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>{f.title}</div>
+          </div>
+        )})}
         {findings.length > 0 && <p style={{ fontSize: 12, color: "#9ca3af", marginTop: 8 }}>Click a finding to see details in the right panel.</p>}
       </main>
 
