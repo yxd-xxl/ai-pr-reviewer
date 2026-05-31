@@ -65,14 +65,27 @@ export default function Dashboard() {
               <thead><tr style={{ borderBottom: "1px solid #e2e8f0" }}>
                 <th style={{ padding: "6px 8px", textAlign: "left", color: "#64748b", fontSize: 11, fontWeight: 600 }}>PR</th>
                 <th style={{ padding: "6px 8px", textAlign: "left", color: "#64748b", fontSize: 11, fontWeight: 600 }}>REPO</th>
+                <th style={{ padding: "6px 8px", textAlign: "left", color: "#64748b", fontSize: 11, fontWeight: 600 }}>MODE</th>
+                <th style={{ padding: "6px 8px", textAlign: "left", color: "#64748b", fontSize: 11, fontWeight: 600 }}>CATEGORIES</th>
                 <th style={{ padding: "6px 8px", textAlign: "right", color: "#64748b", fontSize: 11, fontWeight: 600 }}>FINDINGS</th>
                 <th style={{ padding: "6px 8px", textAlign: "right", color: "#64748b", fontSize: 11, fontWeight: 600 }}>RISK</th>
+                <th style={{ padding: "6px 8px", textAlign: "right", color: "#64748b", fontSize: 11, fontWeight: 600 }}>DATE</th>
               </tr></thead>
               <tbody>
-                {reviews.slice(0, 10).map(r => (
-                  <tr key={r.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: 8, maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.pr_title || `#${r.id}`}</td>
+                {reviews.slice(0, 15).map(r => (
+                  <tr key={r.id} style={{ borderBottom: "1px solid #f1f5f9", cursor: "pointer" }}
+                    onClick={() => {
+                      if (r.pr_url) {
+                        const parts = r.pr_url.split("/");
+                        const num = parts[parts.length-1]; const rn = parts[parts.length-3]; const ow = parts[parts.length-4];
+                        navigate(`/review/${ow}/${rn}/${num}`);
+                      }
+                    }}
+                    title="Click to view full report">
+                    <td style={{ padding: 8, maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.pr_title || `#${r.id}`}</td>
                     <td style={{ padding: 8, fontSize: 12, color: "#64748b" }}>{r.repo}</td>
+                    <td style={{ padding: 8 }}><span style={{ fontSize: 11, padding: "1px 6px", borderRadius: 8, background: r.mode==="deep"?"#ede9fe":r.mode==="fast"?"#fefce8":"#f0fdf4", color: r.mode==="deep"?"#7c3aed":r.mode==="fast"?"#854d0e":"#166534" }}>{r.mode || "balanced"}</span></td>
+                    <td style={{ padding: 8, fontSize: 11, color: "#64748b", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.categories || "all"}</td>
                     <td style={{ padding: 8, textAlign: "right" }}>{r.findings_count}</td>
                     <td style={{ padding: 8, textAlign: "right" }}>
                       <span style={{ padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 500,
@@ -81,6 +94,7 @@ export default function Dashboard() {
                         {r.risk_score || 0}
                       </span>
                     </td>
+                    <td style={{ padding: 8, fontSize: 11, color: "#94a3b8", textAlign: "right" }}>{(r.created_at||"").slice(0,10)}</td>
                   </tr>
                 ))}
               </tbody>
