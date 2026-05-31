@@ -1,7 +1,9 @@
 """Eval router — quality metrics, per-category breakdown, eval history."""
 
+import glob
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Depends
 
@@ -31,7 +33,7 @@ def get_eval_metrics():
         "baseline": {
             "precision": 0.889, "recall": 0.364, "f1": 0.516,
             "model": "deepseek-chat", "evaluated_at": "2026-05-30",
-            "total_cases": len(list(EVAL_DIR.glob("*.json"))) if EVAL_DIR.exists() else 11,
+            "total_cases": len([f for f in EVAL_DIR.glob("*.json") if not str(f).endswith(".disabled")]) if EVAL_DIR.exists() else 3,
         },
         "categories": categories,
         "history": history[-10:],
@@ -41,16 +43,15 @@ def get_eval_metrics():
 @router.post("/run")
 def run_evaluation(token: str = Depends(get_token)):
     """Run evaluation against annotated test cases. Returns updated metrics."""
-    import glob
     from src.pipeline import run_review
     from src.eval.runner import evaluate_result
     from src.eval.metrics import EvalCase, compute_metrics
 
     case_files = sorted([f for f in glob.glob(str(EVAL_DIR / "*.json")) if not f.endswith(".disabled")])
     if not case_files:
-        return {"status": "error", "message": f"No eval cases found in {EVAL_DIR}"}
+        return {"status": "error", "message": "No eval cases found"}
 
-    cases, results = [], []
+    cases, results, errors = [], [], []
     for cf in case_files:
         try:
             ec = EvalCase.from_file(cf)
@@ -59,21 +60,24 @@ def run_evaluation(token: str = Depends(get_token)):
             er = evaluate_result(ec, result)
             results.append(er)
         except Exception as e:
+            errors.append(f"{Path(cf).name}: {e}")
             results.append(None)
 
     valid = [r for r in results if r is not None]
-    success_count = len(valid)
-    fail_count = len(results) - success_count
     if not valid:
-        return {"status": "error", "message": f"All {len(results)} eval cases failed. Check token access to the PR repos."}
+        return {"status": "error", "message": f"All {len(results)} cases failed.", "errors": errors}
 
     metrics = compute_metrics(cases[:len(valid)], valid)
-    _save_history({"precision": metrics.precision, "recall": metrics.recall, "f1": metrics.f1, "evaluated_at": __import__("datetime").datetime.now().isoformat()})
+    _save_history({
+        "precision": metrics.precision, "recall": metrics.recall, "f1": metrics.f1,
+        "evaluated_at": datetime.now().isoformat(),
+    })
 
     return {
         "status": "ok",
         "precision": metrics.precision, "recall": metrics.recall, "f1": metrics.f1,
         "tp": metrics.true_positives, "fp": metrics.false_positives, "fn": metrics.false_negatives,
+        "success": len(valid), "failed": len(errors), "errors": errors[:3],
     }
 
 
