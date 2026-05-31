@@ -1,13 +1,8 @@
 {
   "pr_url": "https://github.com/yxd-xxl/ai-pr-reviewer/pull/3",
-  "category": "design",
-  "expected_files": [
-    "src/context/pr_url.py",
-    "src/context/github_client.py"
+  "category": "bug",
+  "expected_titles": [
+    "Error handling"
   ],
-  "expected_titles": [],
-  "forbidden_titles": [
-    "Missing import",
-    "unused import"
-  ]
+  "forbidden_titles": []
 }
