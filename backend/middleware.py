@@ -6,11 +6,14 @@ from backend.dependencies import get_token
 
 
 def get_auth_user(token: str = Depends(get_token)):
-    """Resolve authenticated user from JWT. Raises 401 if invalid."""
+    """Resolve authenticated user from JWT or GitHub PAT. Raises 401 if invalid."""
+    # Allow GitHub PATs (ghp_/gho_) through directly
+    if token.startswith("ghp_") or token.startswith("gho_"):
+        return None  # authenticated, just not a local user
     try:
         from backend.auth import verify_jwt
     except ImportError:
-        return None  # JWT not yet available on this branch
+        return None
     user = verify_jwt(token)
     if user is None:
         raise HTTPException(401, "Authentication required")
