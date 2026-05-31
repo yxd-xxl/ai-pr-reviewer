@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import ChangeMonitor from "../components/ChangeMonitor";
+import { t } from "../i18n";
 
 const API = "http://localhost:8000";
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -106,17 +107,17 @@ export default function ReviewQueue() {
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>{repo} — Review Queue</h1>
           <button onClick={() => navigate("/connect")}
             style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, fontSize: 13 }}>
-            Change repository
+            {t("Change repository")}
           </button>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <select value={filter} onChange={e => setCachedFilter(e.target.value)}
             style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #d1d5db" }}>
-            <option value="open">Open</option><option value="closed">Closed</option><option value="all">All</option>
+            <option value="open">{t("Open")}</option><option value="closed">{t("Closed")}</option><option value="all">{t("All")}</option>
           </select>
           <button onClick={() => fetchPRs()}
             style={{ padding: "6px 12px", borderRadius: 6, border: "1px solid #d1d5db", background: "#fff", cursor: "pointer" }}>
-            Refresh
+            {t("Refresh")}
           </button>
         </div>
       </div>
@@ -129,9 +130,9 @@ export default function ReviewQueue() {
        prs.length === 0 ? <p style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>No {filter} PRs.</p> :
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead><tr style={{ borderBottom: "2px solid #e5e7eb", textAlign: "left" }}>
-            <th style={{ padding: 8, width: 30 }}>#</th><th style={{ padding: 8 }}>Title</th>
-            <th style={{ padding: 8 }}>Author</th><th style={{ padding: 8 }}>Files</th>
-            <th style={{ padding: 8 }}>±Lines</th><th style={{ padding: 8 }}>State</th><th style={{ padding: 8, width: 100 }}></th>
+            <th style={{ padding: 8, width: 30 }}>#</th><th style={{ padding: 8 }}>{t("Title")}</th>
+            <th style={{ padding: 8 }}>{t("Author")}</th><th style={{ padding: 8 }}>{t("Files")}</th>
+            <th style={{ padding: 8 }}>{t("±Lines")}</th><th style={{ padding: 8 }}>{t("State")}</th><th style={{ padding: 8, width: 100 }}></th>
           </tr></thead>
           <tbody>
             {prs.map(pr => (
@@ -147,7 +148,7 @@ export default function ReviewQueue() {
                 <td style={{ padding: 8 }}><span style={{ padding: "2px 8px", borderRadius: 4, fontSize: 12, background: pr.state === "open" ? "#dcfce7" : "#f3f4f6", color: pr.state === "open" ? "#16a34a" : "#6b7280" }}>{pr.state}</span></td>
                 <td style={{ padding: 8 }}>
                   <button onClick={() => navigate(`/review/${repo}/${pr.number}`)}
-                    style={{ padding: "4px 12px", borderRadius: 6, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer", fontSize: 13 }}>Review</button>
+                    style={{ padding: "4px 12px", borderRadius: 6, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer", fontSize: 13 }}>{t("Review")}</button>
                 </td>
               </tr>
             ))}
@@ -157,16 +158,16 @@ export default function ReviewQueue() {
 
       {/* Bulk Review section */}
       <div style={{ marginTop: 32, padding: 16, border: "1px solid #e5e7eb", borderRadius: 8 }}>
-        <h3 style={{ fontSize: 16, marginBottom: 8 }}>Bulk Review</h3>
+        <h3 style={{ fontSize: 16, marginBottom: 8 }}>{t("Bulk Review")}</h3>
         <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>
-          {selected.size > 0 ? `${selected.size} PR(s) selected. ` : `All ${prs.length} visible PRs. `}
-          {bulkConfig ? "Configure and start:" : ""}
+          {selected.size > 0 ? `${selected.size} ${t("PR(s) selected.")} ` : `${t("All visible PRs")}. `}
+          {bulkConfig ? t("Configure and start:") : ""}
         </p>
 
         {!bulkConfig && !bulkRunning && (
           <button onClick={() => setBulkConfig(true)}
             style={{ padding: "8px 16px", borderRadius: 6, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer", fontSize: 13 }}>
-            Configure Bulk Review
+            {t("Configure Bulk Review")}
           </button>
         )}
 
@@ -174,24 +175,24 @@ export default function ReviewQueue() {
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <select value={bulkCategories} onChange={e => setBulkCategories(e.target.value)}
               style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}>
-              <option value="all">All Categories</option>
+              <option value="all">{t("All Categories")}</option>
               <option value="security">Security Only</option>
               <option value="bug">Bug Only</option>
               <option value="security,bug">Security + Bug</option>
             </select>
             <select value={bulkMode} onChange={e => setBulkMode(e.target.value)}
               style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 13 }}>
-              <option value="fast">Fast</option>
-              <option value="balanced">Balanced</option>
-              <option value="deep">Deep</option>
+              <option value="fast">{t("Fast")}</option>
+              <option value="balanced">{t("Balanced")}</option>
+              <option value="deep">{t("Deep")}</option>
             </select>
             <button onClick={runBulkReview}
               style={{ padding: "6px 14px", borderRadius: 6, border: "none", background: "#16a34a", color: "#fff", cursor: "pointer", fontSize: 13 }}>
-              Start
+              {t("Start")}
             </button>
             <button onClick={() => setBulkConfig(false)}
               style={{ padding: "6px 14px", borderRadius: 6, border: "1px solid #d1d5db", background: "#fff", cursor: "pointer", fontSize: 13 }}>
-              Cancel
+              {t("Cancel")}
             </button>
           </div>
         )}
