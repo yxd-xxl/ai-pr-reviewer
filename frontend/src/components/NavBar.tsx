@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { getLang, setLang } from "../i18n";
 
 const links = [
   { to: "/dashboard", label: "Dashboard" },
@@ -71,6 +72,9 @@ export default function NavBar() {
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a", display: "inline-block" }} />{repo || "Connected"}
       </span>
       <button onClick={logout} style={{ marginLeft: 12, background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: 13 }}>Sign Out</button>
+      <button onClick={() => { const next = getLang() === "zh" ? "en" : "zh"; setLang(next); window.location.reload(); }}
+        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: "4px 8px", fontWeight: 600 }}
+        title="Switch language">{getLang() === "zh" ? "EN" : "中文"}</button>
       <button onClick={toggleTheme} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, padding: "4px 8px" }}>{dark ? "☀️" : "🌙"}</button>
     </nav>
   );
