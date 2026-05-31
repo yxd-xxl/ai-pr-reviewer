@@ -23,6 +23,7 @@ const FEEDBACK_STATES = [
 export default function FindingInspector({ finding, onFeedback, onAskFollowup }: Props) {
   const [question, setQuestion] = useState("");
   const [feedbackState, setFeedbackState] = useState("");
+  const [copied, setCopied] = useState(false);
 
   if (!finding) {
     return (
@@ -118,12 +119,12 @@ export default function FindingInspector({ finding, onFeedback, onAskFollowup }:
         <div style={{ marginTop: 16, borderTop: "1px solid #e5e7eb", paddingTop: 16 }}>
           <button onClick={() => {
             navigator.clipboard.writeText(finding.fix_patch || "");
-            alert("Fix patch copied to clipboard. Apply it in your editor.");
+            setCopied(true); setTimeout(() => setCopied(false), 2000);
           }}
             style={{ width: "100%", padding: "10px", borderRadius: 8, border: "none",
-              background: finding.fix_verified ? "#16a34a" : "#2563eb", color: "#fff",
+              background: copied ? "#16a34a" : finding.fix_verified ? "#16a34a" : "#2563eb", color: "#fff",
               cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
-            {finding.fix_verified ? "Apply Verified Fix" : "Copy Fix Patch"}
+            {copied ? "Copied ✓" : finding.fix_verified ? "Apply Verified Fix" : "Copy Fix Patch"}
           </button>
           {!finding.fix_verified && (
             <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 4, textAlign: "center" }}>

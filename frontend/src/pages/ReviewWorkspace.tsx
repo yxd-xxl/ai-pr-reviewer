@@ -30,6 +30,7 @@ export default function ReviewWorkspace() {
   const [filesCount, setFilesCount] = useState(0);
   const [categories, setCategories] = useState("all");
   const [mode, setMode] = useState("balanced");
+  const [postStatus, setPostStatus] = useState("");
 
   async function runAnalysis() {
     setLoading(true); setError(""); setFindings([]);
@@ -143,13 +144,16 @@ export default function ReviewWorkspace() {
                 Download Report (JSON)
               </button>
               <button onClick={async () => {
+                setPostStatus("Posting...");
                 const r = await fetch(`${API}/api/v1/post-comments?pr_url=${encodeURIComponent(prUrl)}&dry_run=false`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
                 const d = await r.json();
-                alert(d.status === "ok" ? `Posted ${d.findings_count} findings as inline comments.` : `Failed: ${d.message}`);
+                setPostStatus(d.status === "ok" ? `Posted ${d.findings_count} comments ✓` : `Failed: ${d.message}`);
+                setTimeout(() => setPostStatus(""), 3000);
               }}
                 style={{ width: "100%", marginTop: 4, padding: "6px", borderRadius: 6, border: "1px solid #16a34a", background: "#fff", color: "#16a34a", cursor: "pointer", fontSize: 12 }}>
                 Post Comments to PR
               </button>
+              {postStatus && <div style={{ marginTop: 4, fontSize: 11, color: postStatus.includes("✓") ? "#16a34a" : postStatus.includes("Posting") ? "#6b7280" : "#dc2626" }}>{postStatus}</div>}
             </div>
           )}
 
