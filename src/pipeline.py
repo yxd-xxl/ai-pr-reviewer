@@ -101,10 +101,13 @@ def run_review(pr_url: str, token: str,
         from src.store.db import ReviewRepo
         from src.delivery.checklist import risk_score
         repo = f"{pr.owner}/{pr.repo}"
+        llm_provider = (llm_config or {}).get("provider", os.getenv("LLM_PROVIDER", "mock"))
+        llm_model = (llm_config or {}).get("model", os.getenv("LLM_MODEL", ""))
         ReviewRepo().save_review(
             pr.url, pr.title, repo, result.findings,
             risk_score=risk_score(result),
-            mode=config.mode, categories=categories
+            mode=config.mode, categories=categories,
+            llm_provider=llm_provider, llm_model=llm_model,
         )
     except Exception:
         pass

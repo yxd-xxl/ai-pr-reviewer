@@ -56,10 +56,11 @@ class ReviewRepo:
     def save_review(self, pr_url: str, pr_title: str, repo: str,
                     findings: list, risk_score: int = 0,
                     mode: str = "balanced",
-                    categories: str = "all") -> int:
+                    categories: str = "all",
+                    llm_provider: str = "", llm_model: str = "") -> int:
         cur = self._conn.execute(
-            "INSERT INTO review_runs (pr_url, pr_title, repo, findings_count, risk_score, mode, categories, created_at) VALUES (?,?,?,?,?,?,?,?)",
-            (pr_url, pr_title, repo, len(findings), risk_score, mode, categories, _now())
+            "INSERT INTO review_runs (pr_url, pr_title, repo, findings_count, risk_score, mode, categories, llm_provider, llm_model, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (pr_url, pr_title, repo, len(findings), risk_score, mode, categories, llm_provider or "", llm_model or "", _now())
         )
         run_id = cur.lastrowid
         for f in findings:
