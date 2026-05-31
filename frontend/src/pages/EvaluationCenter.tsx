@@ -81,21 +81,22 @@ export default function EvaluationCenter() {
       )}
 
       {/* Overall Score Banner */}
-      <div style={{ padding: 24, borderRadius: 14, background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)", color: "#fff", marginBottom: 24, display: "flex", alignItems: "center", gap: 32 }}>
-        <div style={{ textAlign: "center", minWidth: 100 }}>
-          <div style={{ fontSize: 48, fontWeight: 800, color: f1Color, lineHeight: 1 }}>{b.f1.toFixed(2)}</div>
-          <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 2 }}>F1 Score</div>
-          <div style={{ marginTop: 6, padding: "3px 10px", borderRadius: 20, background: `${f1Color}20`, color: f1Color, fontSize: 11, fontWeight: 600, display: "inline-block" }}>{f1Level}</div>
+      <div style={{ padding: 24, borderRadius: 14, background: "#f8fafc", border: "1px solid #e2e8f0", marginBottom: 24, display: "flex", alignItems: "center", gap: 28 }}>
+        <div style={{ textAlign: "center", minWidth: 90 }}>
+          <div style={{ fontSize: 44, fontWeight: 800, color: f1Color, lineHeight: 1 }}>{b.f1.toFixed(2)}</div>
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>F1 Score</div>
+          <div style={{ marginTop: 6, padding: "2px 10px", borderRadius: 20, background: `${f1Color}18`, color: f1Color, fontSize: 11, fontWeight: 600, display: "inline-block" }}>{f1Level}</div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 32px", flex: 1 }}>
-          {[{ l: "Precision", v: `${(b.precision*100).toFixed(1)}%`, s: "How many findings were correct" },
-            { l: "Recall", v: `${(b.recall*100).toFixed(1)}%`, s: "How many issues were found" },
-            { l: "Model", v: b.model, s: "LLM used for evaluation" },
+        <div style={{ width: 1, height: 70, background: "#e2e8f0" }} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 28px", flex: 1 }}>
+          {[{ l: "Precision", v: `${(b.precision*100).toFixed(1)}%`, s: "Correct findings / total found" },
+            { l: "Recall", v: `${(b.recall*100).toFixed(1)}%`, s: "Issues found / should have found" },
+            { l: "Model", v: b.model, s: "LLM used for evaluation run" },
             { l: "Last Run", v: b.evaluated_at?.slice(0,10), s: `${b.total_cases||11} annotated test cases` }].map(m => (
             <div key={m.l}>
-              <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".5px" }}>{m.l}</div>
-              <div style={{ fontSize: 20, fontWeight: 700 }}>{m.v}</div>
-              <div style={{ fontSize: 11, color: "#64748b" }}>{m.s}</div>
+              <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 2 }}>{m.l}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>{m.v}</div>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 1 }}>{m.s}</div>
             </div>
           ))}
         </div>
