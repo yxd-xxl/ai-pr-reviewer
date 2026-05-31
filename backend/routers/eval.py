@@ -62,10 +62,12 @@ def run_evaluation(token: str = Depends(get_token)):
             results.append(None)
 
     valid = [r for r in results if r is not None]
+    success_count = len(valid)
+    fail_count = len(results) - success_count
     if not valid:
-        return {"status": "error", "message": "All eval cases failed"}
+        return {"status": "error", "message": f"All {len(results)} eval cases failed. Check token access to the PR repos."}
 
-    metrics = compute_metrics(cases, [r for r in results if r is not None])
+    metrics = compute_metrics(cases[:len(valid)], valid)
     _save_history({"precision": metrics.precision, "recall": metrics.recall, "f1": metrics.f1, "evaluated_at": __import__("datetime").datetime.now().isoformat()})
 
     return {
