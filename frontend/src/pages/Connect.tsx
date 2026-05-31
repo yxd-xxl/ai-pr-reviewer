@@ -78,14 +78,18 @@ export default function Connect() {
   }
 
   const [loginEmail, setLoginEmail] = useState("");
+  const [loginPhone, setLoginPhone] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [loginMethod, setLoginMethod] = useState<"email" | "phone">("email");
 
-  async function handleEmailLogin() {
+  async function handleLogin() {
     setError(""); setLoading(true);
+    const body: any = { password: loginPassword };
+    if (loginMethod === "email") body.email = loginEmail;
+    else body.phone = loginPhone;
     try {
       const r = await fetch(`${API}/api/v1/auth/login`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       });
       const d = await r.json();
       if (d.access_token) { localStorage.setItem("ai_pr_token", d.access_token); setUser(d.user); }
@@ -93,6 +97,8 @@ export default function Connect() {
     } catch { setError("Cannot reach API server."); }
     setLoading(false);
   }
+
+  const canLogin = loginPassword && (loginMethod === "email" ? loginEmail : loginPhone);
 
   // Step 1: Not logged in → show login
   if (!user) {
@@ -102,14 +108,22 @@ export default function Connect() {
         <p style={{ color: "#6b7280", marginBottom: 24, textAlign: "center" }}>Sign in to your account</p>
         {error && <div style={{ padding: 10, background: "#fee2e2", color: "#dc2626", borderRadius: 6, marginBottom: 16, fontSize: 13 }}>{error}</div>}
 
-        <input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)}
-          placeholder="Email address" onKeyDown={e => e.key === "Enter" && handleEmailLogin()}
-          style={{ width: "100%", padding: "10px 14px", fontSize: 14, borderRadius: 6, border: "1px solid #d1d5db", marginBottom: 10, boxSizing: "border-box" }} />
-        <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)}
-          placeholder="Password" onKeyDown={e => e.key === "Enter" && handleEmailLogin()}
+        <div style={{ display: "flex", marginBottom: 12, borderRadius: 8, overflow: "hidden", border: "1px solid #d1d5db" }}>
+          <button onClick={() => setLoginMethod("email")} style={{ flex: 1, padding: 8, border: "none", cursor: "pointer", fontSize: 13, background: loginMethod === "email" ? "#2563eb" : "#fff", color: loginMethod === "email" ? "#fff" : "#374151" }}>Email</button>
+          <button onClick={() => setLoginMethod("phone")} style={{ flex: 1, padding: 8, border: "none", cursor: "pointer", fontSize: 13, background: loginMethod === "phone" ? "#2563eb" : "#fff", color: loginMethod === "phone" ? "#fff" : "#374151" }}>Phone</button>
+        </div>
+
+        {loginMethod === "email" ? (
+          <input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder="Email address" onKeyDown={e => e.key === "Enter" && handleLogin()}
+            style={{ width: "100%", padding: "10px 14px", fontSize: 14, borderRadius: 6, border: "1px solid #d1d5db", marginBottom: 10, boxSizing: "border-box" }} />
+        ) : (
+          <input type="tel" value={loginPhone} onChange={e => setLoginPhone(e.target.value)} placeholder="Phone number" onKeyDown={e => e.key === "Enter" && handleLogin()}
+            style={{ width: "100%", padding: "10px 14px", fontSize: 14, borderRadius: 6, border: "1px solid #d1d5db", marginBottom: 10, boxSizing: "border-box" }} />
+        )}
+        <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} placeholder="Password" onKeyDown={e => e.key === "Enter" && handleLogin()}
           style={{ width: "100%", padding: "10px 14px", fontSize: 14, borderRadius: 6, border: "1px solid #d1d5db", marginBottom: 14, boxSizing: "border-box" }} />
-        <button onClick={handleEmailLogin} disabled={loading || !loginEmail || !loginPassword}
-          style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", fontSize: 15, fontWeight: 600, cursor: (loginEmail && loginPassword) ? "pointer" : "default", background: (loginEmail && loginPassword) ? "#2563eb" : "#d1d5db", color: "#fff", marginBottom: 16 }}>
+        <button onClick={handleLogin} disabled={loading || !canLogin}
+          style={{ width: "100%", padding: 12, borderRadius: 8, border: "none", fontSize: 15, fontWeight: 600, cursor: canLogin ? "pointer" : "default", background: canLogin ? "#2563eb" : "#d1d5db", color: "#fff", marginBottom: 16 }}>
           {loading ? "Signing in..." : "Sign in"}
         </button>
 
