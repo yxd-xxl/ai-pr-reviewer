@@ -167,6 +167,9 @@ class UserRepo:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(path)
         self._conn.row_factory = sqlite3.Row
+        from src.store.schema import SCHEMA_SQL
+        self._conn.executescript(SCHEMA_SQL)
+        self._conn.commit()
 
     def find_or_create_by_github(self, github_id: int, login: str,
                                   name: str | None = None,
@@ -261,6 +264,9 @@ class SessionRepo:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(path)
         self._conn.row_factory = sqlite3.Row
+        from src.store.schema import SCHEMA_SQL
+        self._conn.executescript(SCHEMA_SQL)
+        self._conn.commit()
 
     def create(self, user_id: int, token_hash: str, expires_at: str) -> int:
         cur = self._conn.execute(
