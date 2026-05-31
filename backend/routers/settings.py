@@ -1,6 +1,6 @@
 """Settings router — save/load user preferences."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from backend.dependencies import get_github_token
