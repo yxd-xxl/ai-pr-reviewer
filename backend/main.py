@@ -6,7 +6,7 @@ load_dotenv()
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.routers import auth, repos, review, eval as eval_router
+from backend.routers import auth, repos, review, settings, eval as eval_router
 
 app = FastAPI(title="AI PR Reviewer API", version="1.0.0")
 
@@ -22,6 +22,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(repos.router)
 app.include_router(review.router)
+app.include_router(settings.router)
 app.include_router(eval_router.router)
 
 

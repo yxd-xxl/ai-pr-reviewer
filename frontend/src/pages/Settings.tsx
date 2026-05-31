@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const API = "http://localhost:8000";
+
+function getToken() { return localStorage.getItem("ai_pr_token") || ""; }
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -11,6 +13,33 @@ export default function Settings() {
   const [ghToken, setGhToken] = useState("");
   const [ghTokenSaved, setGhTokenSaved] = useState(false);
   const [llmSaved, setLlmSaved] = useState(false);
+
+  // Load settings from backend on mount
+  useEffect(() => {
+    const t = getToken();
+    if (!t) return;
+    fetch(`${API}/api/v1/settings`, { headers: { Authorization: `Bearer ${t}` } })
+      .then(r => r.json()).then(d => {
+        const s = d.settings || {};
+        if (s.llm_provider) { (document.getElementById("llmProvider") as HTMLSelectElement).value = s.llm_provider; localStorage.setItem("ai_pr_llm_provider", s.llm_provider); }
+        if (s.llm_api_key) { (document.getElementById("llmKey") as HTMLInputElement).value = s.llm_api_key; localStorage.setItem("ai_pr_llm_key", s.llm_api_key); }
+        if (s.min_confidence) { setConfidence(Math.round(s.min_confidence * 100)); localStorage.setItem("ai_pr_min_confidence", String(Math.round(s.min_confidence * 100))); }
+        if (s.max_inline_comments) { setMaxComments(s.max_inline_comments); localStorage.setItem("ai_pr_max_comments", String(s.max_inline_comments)); }
+        if (s.review_mode) { setMode(s.review_mode); localStorage.setItem("ai_pr_mode", s.review_mode); }
+      }).catch(() => {});
+  }, []);
+
+  function saveToBackend() {
+    const t = getToken(); if (!t) return;
+    const body = {
+      llm_provider: localStorage.getItem("ai_pr_llm_provider") || "",
+      llm_api_key: localStorage.getItem("ai_pr_llm_key") || "",
+      min_confidence: Number(localStorage.getItem("ai_pr_min_confidence") || 65) / 100,
+      max_inline_comments: Number(localStorage.getItem("ai_pr_max_comments") || 10),
+      review_mode: localStorage.getItem("ai_pr_mode") || "balanced",
+    };
+    fetch(`${API}/api/v1/settings`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` }, body: JSON.stringify(body) }).catch(() => {});
+  }
 
   function saveGhToken() {
     if (!ghToken.trim()) return;
@@ -58,15 +87,15 @@ export default function Settings() {
         <h2 style={{ fontSize: 20, marginBottom: 16 }}>Review Rules</h2>
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Min Confidence: {confidence}%</label>
-          <input type="range" min={0} max={100} value={confidence} onChange={e => { const v = Number(e.target.value); setConfidence(v); localStorage.setItem("ai_pr_min_confidence", String(v)); }} style={{ width: "100%" }} />
+          <input type="range" min={0} max={100} value={confidence} onChange={e => { const v = Number(e.target.value); setConfidence(v); localStorage.setItem("ai_pr_min_confidence", String(v)); saveToBackend(); }} style={{ width: "100%" }} />
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Max Inline Comments: {maxComments}</label>
-          <input type="range" min={0} max={30} value={maxComments} onChange={e => { const v = Number(e.target.value); setMaxComments(v); localStorage.setItem("ai_pr_max_comments", String(v)); }} style={{ width: "100%" }} />
+          <input type="range" min={0} max={30} value={maxComments} onChange={e => { const v = Number(e.target.value); setMaxComments(v); localStorage.setItem("ai_pr_max_comments", String(v)); saveToBackend(); }} style={{ width: "100%" }} />
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: "block", marginBottom: 4, fontWeight: 600 }}>Review Mode</label>
-          <select value={mode} onChange={e => { setMode(e.target.value); localStorage.setItem("ai_pr_mode", e.target.value); }} style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", width: "100%" }}>
+          <select value={mode} onChange={e => { setMode(e.target.value); localStorage.setItem("ai_pr_mode", e.target.value); saveToBackend(); }} style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", width: "100%" }}>
             <option value="fast">Fast</option><option value="balanced">Balanced</option><option value="deep">Deep</option>
           </select>
         </div>
@@ -92,6 +121,7 @@ export default function Settings() {
             const k = (document.getElementById("llmKey") as HTMLInputElement).value;
             localStorage.setItem("ai_pr_llm_provider", p);
             localStorage.setItem("ai_pr_llm_key", k);
+            saveToBackend();
             setLlmSaved(true); setTimeout(() => setLlmSaved(false), 2000);
           }}
             style={{ padding: "8px 14px", borderRadius: 6, border: "none", background: llmSaved ? "#16a34a" : "#2563eb", color: "#fff", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}>

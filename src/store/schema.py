@@ -70,6 +70,19 @@ CREATE TABLE IF NOT EXISTS github_tokens (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- User settings: persisted LLM config, review preferences
+CREATE TABLE IF NOT EXISTS user_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE UNIQUE,
+    llm_provider TEXT DEFAULT 'deepseek',
+    llm_api_key TEXT DEFAULT '',
+    llm_model TEXT DEFAULT 'deepseek-chat',
+    min_confidence REAL DEFAULT 0.65,
+    max_inline_comments INTEGER DEFAULT 10,
+    review_mode TEXT DEFAULT 'balanced',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Audit log: every action recorded for compliance
 CREATE TABLE IF NOT EXISTS audit_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
