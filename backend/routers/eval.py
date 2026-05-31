@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Depends
 
-from backend.dependencies import get_token
+from backend.dependencies import get_token, get_github_token
 
 router = APIRouter(prefix="/api/v1/eval", tags=["eval"])
 
@@ -41,7 +41,7 @@ def get_eval_metrics():
 
 
 @router.post("/run")
-def run_evaluation(token: str = Depends(get_token)):
+def run_evaluation(token: str = Depends(get_github_token)):
     """Run evaluation against annotated test cases. Returns updated metrics."""
     from src.pipeline import run_review
     from src.eval.runner import evaluate_result

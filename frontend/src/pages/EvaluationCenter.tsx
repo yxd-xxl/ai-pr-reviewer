@@ -70,7 +70,7 @@ export default function EvaluationCenter() {
         </div>
         <button onClick={runEval} disabled={running}
           style={{ padding: "10px 22px", borderRadius: 10, border: "none", background: running ? "#cbd5e1" : "#0f172a", color: "#fff", cursor: running ? "default" : "pointer", fontSize: 14, fontWeight: 600, whiteSpace: "nowrap" }}>
-          {running ? "Running 11 cases…" : "Run Evaluation"}
+          {running ? `Running ${data?.baseline?.total_cases || 3} cases…` : "Run Evaluation"}
         </button>
       </div>
 
