@@ -99,6 +99,17 @@ export default function Settings() {
         </div>
       </section>
 
+      <section style={{ marginBottom: 32 }}>
+        <h2 style={{ fontSize: 20, marginBottom: 16 }}>Webhook</h2>
+        <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 12 }}>
+          Add this URL to your GitHub repo webhook settings for automatic PR review on push.
+        </p>
+        <div style={{ padding: 10, background: "#f9fafb", borderRadius: 6, fontFamily: "monospace", fontSize: 12, marginBottom: 8 }}>
+          https://your-domain.com/api/webhook
+        </div>
+        <input type="password" placeholder="Webhook Secret (optional)" style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }} />
+      </section>
+
       <section>
         <h2 style={{ fontSize: 20, marginBottom: 16, color: "#dc2626" }}>Danger Zone</h2>
         <button onClick={logout}
