@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { getLang, setLang } from "../i18n";
+import { t, getLang, setLang } from "../i18n";
 
 const links = [
   { to: "/dashboard", labelKey: "Dashboard" },
