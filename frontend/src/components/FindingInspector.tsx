@@ -113,6 +113,25 @@ export default function FindingInspector({ finding, onFeedback, onAskFollowup }:
           }}
         />
       </div>
+
+      {finding.fix_patch && (
+        <div style={{ marginTop: 16, borderTop: "1px solid #e5e7eb", paddingTop: 16 }}>
+          <button onClick={() => {
+            navigator.clipboard.writeText(finding.fix_patch || "");
+            alert("Fix patch copied to clipboard. Apply it in your editor.");
+          }}
+            style={{ width: "100%", padding: "10px", borderRadius: 8, border: "none",
+              background: finding.fix_verified ? "#16a34a" : "#2563eb", color: "#fff",
+              cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+            {finding.fix_verified ? "Apply Verified Fix" : "Copy Fix Patch"}
+          </button>
+          {!finding.fix_verified && (
+            <p style={{ fontSize: 11, color: "#9ca3af", marginTop: 4, textAlign: "center" }}>
+              This fix has not been independently verified. Review carefully.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

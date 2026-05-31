@@ -94,3 +94,34 @@ def get_review(review_id: int):
         return {"status": "ok", "review_id": review_id, "findings": findings}
     finally:
         db.close()
+
+
+@router.post("/check-changes")
+def check_changes_endpoint(owner: str, repo: str, token: str = Depends(get_github_token)):
+    """Check for unreviewed commits in a repository."""
+    from src.pipeline import check_changes
+    result = check_changes(owner, repo, token)
+    return {"status": "ok", **result}
+
+
+@router.post("/generate-proposal")
+def generate_proposal(owner: str, repo: str, token: str = Depends(get_github_token)):
+    """Generate a PR title and description from unreviewed changes."""
+    from src.pipeline import check_changes, generate_pr_proposal
+    changes = check_changes(owner, repo, token)
+    if not changes.get("has_changes"):
+        return {"status": "ok", "has_changes": False, "proposal": None}
+    proposal = generate_pr_proposal(owner, repo, token, changes["diff_text"], changes["commit_count"])
+    return {"status": "ok", "has_changes": True, "proposal": proposal, "changes": changes}
+
+
+@router.post("/create-pr")
+def create_pr_endpoint(owner: str, repo: str, title: str, description: str = "",
+                       token: str = Depends(get_github_token)):
+    """Create a PR from detected changes."""
+    from src.pipeline import check_changes, create_pr_from_changes
+    changes = check_changes(owner, repo, token)
+    if not changes.get("has_changes"):
+        return {"status": "error", "message": "No unreviewed changes"}
+    result = create_pr_from_changes(owner, repo, token, title, description, changes["head_sha"])
+    return {"status": "ok" if result.get("url") else "error", **result}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import ChangeMonitor from "../components/ChangeMonitor";
 
 const API = "http://localhost:8000";
 
@@ -71,6 +72,7 @@ export default function ReviewQueue() {
           </button>
         </div>
       </div>
+      <ChangeMonitor owner={owner} repo={repoName} token={token} />
       {error && <div style={{ padding: 12, background: "#fee2e2", color: "#dc2626", borderRadius: 8, marginBottom: 16 }}>{error}</div>}
       {loading ? <p style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>Loading pull requests...</p> :
        prs.length === 0 ? <p style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>No {filter} PRs.</p> :
