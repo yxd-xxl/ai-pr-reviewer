@@ -1,54 +1,44 @@
-# PR 27 Verification
+# Evaluation Guide
 
-## Gate 1: pytest
+评估框架用于量化 AI PR Reviewer 的评审质量。
 
-```bash
-python -m pytest tests/ -v
-# Expected: all passed
-```
+## 指标说明
 
-## Gate 2: Default behavior unchanged
+| 指标 | 公式 | 含义 |
+|------|------|------|
+| **Precision** | TP / (TP + FP) | 报告的 Finding 中有多少是真实的 |
+| **Recall** | TP / (TP + FN) | 应该发现的 Issue 中实际发现了多少 |
+| **F1 Score** | 2 × P × R / (P + R) | 精确率和召回率的调和平均 |
 
-```bash
-python -m src.cli.main review https://github.com/yxd-xxl/ai-pr-reviewer/pull/7
-# Expected: same output as before (4 files, N findings)
-```
+## 评估案例
 
-## Gate 3: Mock mode
+3 个标注测试用例（`tests/eval/` 目录），分别覆盖三类典型场景：
 
-```bash
-LLM_PROVIDER=mock GITHUB_TOKEN=xxx python -m src.cli.main review <URL>
-# Expected: mock findings generated
-```
+| 案例 | PR | 类别 | 期望发现数 |
+|------|-----|------|-----------|
+| `sec_demo.json` | [#68](https://github.com/yxd-xxl/ai-pr-reviewer/pull/68) | Security | 6（SQL 注入、硬编码密钥、命令注入、路径遍历、不安全的 pickle、弱哈希 MD5） |
+| `bug_demo.json` | [#69](https://github.com/yxd-xxl/ai-pr-reviewer/pull/69) | Bug | 10（None 引用、AttributeError、off-by-one、裸 except、可变默认参数、竞态条件、未关闭资源、除零、运算符优先级） |
+| `perf_demo.json` | [#70](https://github.com/yxd-xxl/ai-pr-reviewer/pull/70) | Performance | 8（N+1 查询、O(n²) 嵌套循环、无界增长、缓存缺失、串行化、重复计算、内存泄露） |
 
-## Gate 4: Deliver not broken
-
-```bash
-python -m src.cli.main review <URL> --delivery github
-# Expected: dry-run output
-```
-
-## Gate 5: --categories security
+## 运行评估
 
 ```bash
-python -m src.cli.main review <URL> --categories security
-# Expected: only security findings (category="security")
+# CLI
+python -m src.cli.main evaluate
+
+# Web UI（Evaluation Center）
+# 设置 LLM Provider 为 Mock → 点击 "Run Evaluation"
 ```
 
-## Gate 6: --categories bug,style
+Mock 模式下直接生成模拟结果，无需 LLM API key。真实评估需配置 LLM provider。
 
-```bash
-python -m src.cli.main review <URL> --categories bug,style
-# Expected: LLMAnalyzer covers both
-```
+## 最新基线
 
-## Gate 7: Invalid category
+| 类别 | Precision | Recall | F1 | 状态 |
+|------|-----------|--------|-----|------|
+| Security | 83.3% | 83.3% | 0.833 | Good |
+| Bug | 87.5% | 70.0% | 0.778 | Good |
+| Performance | 85.7% | 75.0% | 0.800 | Good |
+| **Overall** | **85.7%** | **75.0%** | **0.800** | **Good** |
 
-```bash
-python -m src.cli.main review <URL> --categories invalid
-# Expected: error message with valid options
-```
-
-## Gate 8: Finding fields
-
-Every finding must have: severity, category, analyzer, confidence, evidence, location
+基线基于 3 个标注案例的 mock 模拟评估。评估历史记录存储在 `.ai-pr-reviewer/eval_history.json`。

@@ -28,8 +28,10 @@ class TestReviewEndpoint:
             assert resp.status_code in (400, 401, 500)
 
     def test_review_with_token(self, client):
-        with patch.dict("os.environ", {"GITHUB_TOKEN": "test_token"}, clear=False), \
-             patch("src.pipeline.run_review") as mock_run, \
+        from backend.dependencies import get_github_token
+        client.app.dependency_overrides[get_github_token] = lambda: "test_token"
+
+        with patch("src.pipeline.run_review") as mock_run, \
              patch("backend.routers.review.require_permission", lambda p: lambda: None):
             mock_pr = MagicMock()
             mock_pr.title = "Test"; mock_pr.url = "url"; mock_pr.author = "dev"
@@ -45,6 +47,8 @@ class TestReviewEndpoint:
             assert resp.status_code == 200
             data = resp.json()
             assert data["status"] == "ok"
+
+        client.app.dependency_overrides.clear()
 
 
 class TestFeedbackEndpoint:
