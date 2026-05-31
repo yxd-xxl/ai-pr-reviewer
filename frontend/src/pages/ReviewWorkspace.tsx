@@ -117,7 +117,7 @@ export default function ReviewWorkspace() {
             style={{ width: "100%", marginTop: 8, padding: "10px", borderRadius: 8, border: "none",
               background: loading ? "#d1d5db" : "#2563eb", color: "#fff",
               cursor: loading ? "default" : "pointer", fontSize: 14, fontWeight: 600 }}>
-            {loading ? `Analyzing... (${Object.values(timing)[0] || "?"}s)` : "Run Analysis"}
+            {loading ? "Analyzing…" : "Run Analysis"}
           </button>
 
           {/* Metrics */}
@@ -175,6 +175,14 @@ export default function ReviewWorkspace() {
       {/* Center — summary + findings list */}
       <main style={{ flex: 1, overflow: "auto", padding: 16 }}>
         {error && <div style={{ padding: 12, background: "#fee2e2", color: "#dc2626", borderRadius: 8, marginBottom: 16 }}>{error}</div>}
+        {loading && (
+          <div style={{ textAlign: "center", padding: 80 }}>
+            <div style={{ fontSize: 60, marginBottom: 16 }}>🔍</div>
+            <h3 style={{ color: "#374151", marginBottom: 8 }}>Analyzing Pull Request</h3>
+            <p style={{ color: "#6b7280", fontSize: 14 }}>Running SAST + LLM analysis with 6 analyzers…</p>
+            <p style={{ color: "#9ca3af", fontSize: 12, marginTop: 16 }}>This may take 20-60 seconds depending on PR size.</p>
+          </div>
+        )}
         {!loading && findings.length === 0 && !error && (
           <div style={{ textAlign: "center", padding: 80, color: "#9ca3af" }}>
             <h2>AI PR Reviewer</h2>
