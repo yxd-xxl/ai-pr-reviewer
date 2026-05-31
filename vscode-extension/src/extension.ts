@@ -126,7 +126,9 @@ class FindingsTreeProvider implements vscode.TreeDataProvider<FindingItem> {
   }
 
   removeFinding(finding: Finding) {
-    this._findings = this._findings.filter((f) => f !== finding);
+    this._findings = this._findings.filter(
+      (f) => !(f.title === finding.title && f.location.file === finding.location.file && f.location.line === finding.location.line)
+    );
     this._onDidChange.fire(undefined);
   }
 

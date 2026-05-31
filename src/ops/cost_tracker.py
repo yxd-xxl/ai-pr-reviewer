@@ -18,16 +18,17 @@ def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
 
 
 def record_usage(model: str, input_tokens: int, output_tokens: int,
-                 latency_ms: int = 0):
+                 latency_ms: int = 0, review_run_id: int = 0):
     """Record model usage to SQLite for tracking."""
     try:
         from src.store.db import ReviewRepo
         db = ReviewRepo()
         try:
             cost = estimate_cost(model, input_tokens, output_tokens)
+            provider = model.split("-")[0] if "-" in model else model
             db._conn.execute(
                 "INSERT INTO model_usages (review_run_id, model, provider, call_count, total_tokens, total_latency_ms, cost_estimate) VALUES (?,?,?,?,?,?,?)",
-                (0, model, model.split("-")[0], 1, input_tokens + output_tokens, latency_ms, cost),
+                (review_run_id, model, provider, 1, input_tokens + output_tokens, latency_ms, cost),
             )
             db._conn.commit()
         finally:
@@ -37,14 +38,23 @@ def record_usage(model: str, input_tokens: int, output_tokens: int,
 
 
 def get_cost_summary(repo: str = "", days: int = 30) -> dict:
-    """Get cost summary from SQLite."""
+    """Get cost summary from SQLite, optionally filtered by repo and days."""
     try:
         from src.store.db import ReviewRepo
         db = ReviewRepo()
         try:
-            rows = db._conn.execute(
-                "SELECT model, SUM(call_count) as calls, SUM(total_tokens) as tokens, SUM(cost_estimate) as cost FROM model_usages GROUP BY model"
-            ).fetchall()
+            query = "SELECT model, SUM(call_count) as calls, SUM(total_tokens) as tokens, SUM(cost_estimate) as cost FROM model_usages"
+            conditions = []
+            params = []
+            if days:
+                conditions.append(f"created_at >= datetime('now', '-{int(days)} days')")
+            if repo:
+                conditions.append("review_run_id IN (SELECT id FROM review_runs WHERE repo=?)")
+                params.append(repo)
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            query += " GROUP BY model"
+            rows = db._conn.execute(query, params).fetchall()
             return {
                 "models": [{"model": r["model"], "calls": r["calls"], "tokens": r["tokens"], "cost": round(r["cost"], 4)} for r in rows],
             }
