@@ -64,13 +64,13 @@ export default function Dashboard() {
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead><tr style={{ borderBottom: "1px solid #e2e8f0" }}>
-                <th style={{ padding: "6px 8px", textAlign: "left", color: "#64748b", fontSize: 11, fontWeight: 600 }}>PR</th>
-                <th style={{ padding: "6px 8px", textAlign: "left", color: "#64748b", fontSize: 11, fontWeight: 600 }}>REPO</th>
-                <th style={{ padding: "6px 8px", textAlign: "left", color: "#64748b", fontSize: 11, fontWeight: 600 }}>MODE</th>
-                <th style={{ padding: "6px 8px", textAlign: "left", color: "#64748b", fontSize: 11, fontWeight: 600 }}>CATEGORIES</th>
-                <th style={{ padding: "6px 8px", textAlign: "right", color: "#64748b", fontSize: 11, fontWeight: 600 }}>FINDINGS</th>
-                <th style={{ padding: "6px 8px", textAlign: "right", color: "#64748b", fontSize: 11, fontWeight: 600 }}>RISK</th>
-                <th style={{ padding: "6px 8px", textAlign: "right", color: "#64748b", fontSize: 11, fontWeight: 600 }}>DATE</th>
+                <th style={{ padding: "6px 8px", textAlign: "left", color: "#64748b", fontSize: 11, fontWeight: 600 }}>{t("PR")}</th>
+                <th style={{ padding: "6px 8px", textAlign: "left", color: "#64748b", fontSize: 11, fontWeight: 600 }}>{t("REPO")}</th>
+                <th style={{ padding: "6px 8px", textAlign: "left", color: "#64748b", fontSize: 11, fontWeight: 600 }}>{t("MODE")}</th>
+                <th style={{ padding: "6px 8px", textAlign: "left", color: "#64748b", fontSize: 11, fontWeight: 600 }}>{t("CATEGORIES")}</th>
+                <th style={{ padding: "6px 8px", textAlign: "right", color: "#64748b", fontSize: 11, fontWeight: 600 }}>{t("FINDINGS")}</th>
+                <th style={{ padding: "6px 8px", textAlign: "right", color: "#64748b", fontSize: 11, fontWeight: 600 }}>{t("RISK")}</th>
+                <th style={{ padding: "6px 8px", textAlign: "right", color: "#64748b", fontSize: 11, fontWeight: 600 }}>{t("DATE")}</th>
               </tr></thead>
               <tbody>
                 {reviews.slice(0, 15).map(r => (
@@ -104,10 +104,10 @@ export default function Dashboard() {
             <p style={{ color: "#94a3b8", fontSize: 14, textAlign: "center", padding: 30 }}>{t("No data yet.")}</p>
           ) : (
             <div>
-              {[{ label: "Critical", count: riskDist.critical, color: "#ef4444" },
-                { label: "High", count: riskDist.high, color: "#f97316" },
-                { label: "Medium", count: riskDist.medium, color: "#eab308" },
-                { label: "Low", count: riskDist.low, color: "#10b981" }].map(r => (
+              {[{ label: t("Critical"), count: riskDist.critical, color: "#ef4444" },
+                { label: t("High"), count: riskDist.high, color: "#f97316" },
+                { label: t("Medium"), count: riskDist.medium, color: "#eab308" },
+                { label: t("Low"), count: riskDist.low, color: "#10b981" }].map(r => (
                 <div key={r.label} style={{ marginBottom: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
                     <span style={{ fontWeight: 500 }}>{r.label}</span>
