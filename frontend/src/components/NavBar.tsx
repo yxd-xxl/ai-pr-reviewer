@@ -71,7 +71,7 @@ export default function NavBar() {
       <span style={{ fontSize: 12, color: "#16a34a", display: "flex", alignItems: "center", gap: 6 }}>
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a", display: "inline-block" }} />{repo || "Connected"}
       </span>
-      <button onClick={logout} style={{ marginLeft: 12, background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: 13 }}>Sign Out</button>
+      <button onClick={logout} style={{ marginLeft: 12, background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: 13 }}>{t("Sign Out")}</button>
       <button onClick={() => { const next = getLang() === "zh" ? "en" : "zh"; setLang(next); window.location.href = window.location.href; }}
         style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: "4px 8px", fontWeight: 600 }}
         title="Switch language">{getLang() === "zh" ? "EN" : "中文"}</button>

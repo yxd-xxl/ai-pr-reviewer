@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { t } from "../i18n";
 
 const API = "http://localhost:8000";
 function getToken() { return localStorage.getItem("ai_pr_token") || ""; }
@@ -28,9 +29,9 @@ export default function Dashboard() {
     <div style={{ maxWidth: 1040, margin: "0 auto", padding: "28px 24px" }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, color: "#0f172a" }}>Dashboard</h1>
+        <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, color: "#0f172a" }}>{t("Dashboard")}</h1>
         <p style={{ color: "#64748b", fontSize: 14, margin: "4px 0 0" }}>
-          {reviews.length > 0 ? `${reviews.length} reviews across ${repos.length} repos` : "Connect a repository to start reviewing PRs."}
+          {reviews.length > 0 ? `${reviews.length} reviews across ${repos.length} ${t("repositories")}` : t("Connect a repository to start reviewing PRs.")}
         </p>
       </div>
 
