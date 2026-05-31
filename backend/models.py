@@ -50,6 +50,9 @@ class ReviewRequest(BaseModel):
     pr_url: str
     categories: str = "all"
     mode: str = "balanced"
+    llm_provider: str = ""
+    llm_api_key: str = ""
+    llm_model: str = ""
 
 
 class FindingResponse(BaseModel):

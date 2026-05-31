@@ -10,6 +10,7 @@ export default function Settings() {
   const [mode, setMode] = useState("balanced");
   const [ghToken, setGhToken] = useState("");
   const [ghTokenSaved, setGhTokenSaved] = useState(false);
+  const [llmSaved, setLlmSaved] = useState(false);
 
   function saveGhToken() {
     if (!ghToken.trim()) return;
@@ -74,21 +75,29 @@ export default function Settings() {
       <section style={{ marginBottom: 32 }}>
         <h2 style={{ fontSize: 20, marginBottom: 16 }}>LLM Configuration</h2>
         <p style={{ fontSize: 14, color: "#6b7280", marginBottom: 12 }}>
-          Configure the AI model used for code review.
+          Configure the AI model used for code review. Saved to your browser — takes effect on next review.
         </p>
-        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <select style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <select id="llmProvider" defaultValue={localStorage.getItem("ai_pr_llm_provider") || "deepseek"}
+            style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }}>
             <option value="deepseek">DeepSeek (Recommended)</option>
             <option value="anthropic">Anthropic Claude</option>
             <option value="openai">OpenAI GPT-4o</option>
             <option value="mock">Mock (no API key)</option>
           </select>
-          <input type="text" placeholder="API Key (sk-...)"
-            style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }} />
+          <input id="llmKey" type="password" defaultValue={localStorage.getItem("ai_pr_llm_key") || ""}
+            placeholder="API Key" style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #d1d5db", fontSize: 14 }} />
+          <button onClick={() => {
+            const p = (document.getElementById("llmProvider") as HTMLSelectElement).value;
+            const k = (document.getElementById("llmKey") as HTMLInputElement).value;
+            localStorage.setItem("ai_pr_llm_provider", p);
+            localStorage.setItem("ai_pr_llm_key", k);
+            setLlmSaved(true); setTimeout(() => setLlmSaved(false), 2000);
+          }}
+            style={{ padding: "8px 14px", borderRadius: 6, border: "none", background: llmSaved ? "#16a34a" : "#2563eb", color: "#fff", cursor: "pointer", fontSize: 13, whiteSpace: "nowrap" }}>
+            {llmSaved ? "Saved ✓" : "Save"}
+          </button>
         </div>
-        <p style={{ fontSize: 12, color: "#9ca3af" }}>
-          Set LLM_PROVIDER and LLM_API_KEY in .env, or configure here per session.
-        </p>
       </section>
 
       <section style={{ marginBottom: 32 }}>

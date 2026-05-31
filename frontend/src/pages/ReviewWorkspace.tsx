@@ -39,7 +39,12 @@ export default function ReviewWorkspace() {
       const resp = await fetch(`${API}/api/v1/review`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ pr_url: prUrl, categories, mode }),
+        body: JSON.stringify({
+          pr_url: prUrl, categories, mode,
+          llm_provider: localStorage.getItem("ai_pr_llm_provider") || "",
+          llm_api_key: localStorage.getItem("ai_pr_llm_key") || "",
+          llm_model: localStorage.getItem("ai_pr_llm_model") || "",
+        }),
       });
       const data = await resp.json();
       if (data.status === "ok") {
