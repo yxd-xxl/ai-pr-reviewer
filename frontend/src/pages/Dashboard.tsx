@@ -74,13 +74,7 @@ export default function Dashboard() {
               <tbody>
                 {reviews.slice(0, 15).map(r => (
                   <tr key={r.id} style={{ borderBottom: "1px solid #f1f5f9", cursor: "pointer" }}
-                    onClick={() => {
-                      if (r.pr_url) {
-                        const parts = r.pr_url.split("/");
-                        const num = parts[parts.length-1]; const rn = parts[parts.length-3]; const ow = parts[parts.length-4];
-                        navigate(`/review/${ow}/${rn}/${num}`);
-                      }
-                    }}
+                    onClick={() => navigate(`/review-report/${r.id}`)}
                     title="Click to view full report">
                     <td style={{ padding: 8, maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.pr_title || `#${r.id}`}</td>
                     <td style={{ padding: 8, fontSize: 12, color: "#64748b" }}>{r.repo}</td>
