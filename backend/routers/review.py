@@ -116,7 +116,23 @@ def get_review_by_pr(pr_url: str):
         return {
             "status": "ok",
             "review": dict(row),
-            "findings": findings,
+            "findings": [
+                {
+                    "severity": f.get("severity", "medium"),
+                    "category": f.get("category", "style"),
+                    "title": f.get("title", ""),
+                    "description": f.get("description", ""),
+                    "suggestion": f.get("suggestion", ""),
+                    "confidence": f.get("confidence", 0.5),
+                    "evidence": f.get("evidence"),
+                    "fix_patch": f.get("fix_patch"),
+                    "fix_verified": False,
+                    "analyzer": f.get("analyzer", "llm"),
+                    "location": {"file": f.get("file", ""), "line": f.get("line")},
+                    "lifecycle_state": "published",
+                }
+                for f in findings
+            ],
         }
     finally:
         db.close()

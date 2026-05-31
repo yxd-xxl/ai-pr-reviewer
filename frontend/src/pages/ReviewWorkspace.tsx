@@ -34,12 +34,13 @@ export default function ReviewWorkspace() {
   const [postStatus, setPostStatus] = useState("");
 
   // Auto-load stored review if it exists
+  const [hasStored, setHasStored] = useState(false);
   useEffect(() => {
     fetch(`${API}/api/v1/review/by-pr?pr_url=${encodeURIComponent(prUrl)}`)
       .then(r => r.json()).then(d => {
         if (d.status === "ok" && d.findings?.length > 0) {
           setFindings(d.findings);
-          setSummary(d.review?.findings_count ? "" : "");
+          setHasStored(true);
         }
       }).catch(() => {});
   }, [prUrl]);
@@ -131,11 +132,16 @@ export default function ReviewWorkspace() {
             </select>
           </div>
 
+          {hasStored && !loading && findings.length > 0 && (
+            <div style={{ fontSize: 11, color: "#16a34a", marginTop: 6, textAlign: "center" }}>
+              Showing stored review. Click below to re-analyze.
+            </div>
+          )}
           <button onClick={runAnalysis} disabled={loading}
             style={{ width: "100%", marginTop: 8, padding: "10px", borderRadius: 8, border: "none",
-              background: loading ? "#d1d5db" : "#2563eb", color: "#fff",
+              background: loading ? "#d1d5db" : hasStored ? "#16a34a" : "#2563eb", color: "#fff",
               cursor: loading ? "default" : "pointer", fontSize: 14, fontWeight: 600 }}>
-            {loading ? "Analyzing…" : "Run Analysis"}
+            {loading ? "Analyzing…" : hasStored ? "Re-run Analysis" : "Run Analysis"}
           </button>
 
           {/* Metrics */}
