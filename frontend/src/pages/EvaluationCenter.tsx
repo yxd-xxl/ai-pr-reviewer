@@ -43,7 +43,7 @@ export default function EvaluationCenter() {
     setRunning(true); setRunResult(null);
     try {
       const token = localStorage.getItem("ai_pr_token") || "";
-      const r = await fetch(`${API}/api/v1/eval/run`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+      const r = await fetch(`${API}/api/v1/eval/run?llm_provider=${localStorage.getItem("ai_pr_llm_provider")||""}&llm_api_key=${localStorage.getItem("ai_pr_llm_key")||""}&llm_model=${localStorage.getItem("ai_pr_llm_model")||""}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
       const d = await r.json();
       setRunResult(d);
       if (d.status === "ok") { const r2 = await fetch(`${API}/api/v1/eval`); setData(await r2.json()); }

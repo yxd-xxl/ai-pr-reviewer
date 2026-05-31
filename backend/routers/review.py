@@ -159,15 +159,23 @@ def post_comments(pr_url: str, token: str = Depends(get_github_token),
 
 
 @router.post("/batch-review")
-def batch_review(pr_urls: list[str], categories: str = "all",
+def batch_review(pr_urls: list[str], categories: str = "all", mode: str = "balanced",
+                 llm_provider: str = "", llm_api_key: str = "", llm_model: str = "",
                  token: str = Depends(get_github_token)):
     """Run analysis on multiple PRs and return aggregate results."""
     from concurrent.futures import ThreadPoolExecutor, as_completed
     from src.pipeline import run_review
+    from src.core.config import ReviewConfig
+
+    provider = llm_provider or os.getenv("LLM_PROVIDER", "mock")
+    llm_cfg = {"provider": provider, "api_key": llm_api_key or os.getenv("LLM_API_KEY", ""),
+               "base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
+               "model": llm_model or os.getenv("LLM_MODEL", "deepseek-chat")}
+    config = ReviewConfig(mode=mode or "balanced")
 
     results = []
     with ThreadPoolExecutor(max_workers=3) as pool:
-        futures = {pool.submit(run_review, url, token, categories=categories): url for url in pr_urls}
+        futures = {pool.submit(run_review, url, token, config=config, llm_config=llm_cfg, categories=categories): url for url in pr_urls}
         for fut in as_completed(futures):
             url = futures[fut]
             try:

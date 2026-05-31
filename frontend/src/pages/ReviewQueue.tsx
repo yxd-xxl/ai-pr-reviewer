@@ -69,7 +69,7 @@ export default function ReviewQueue() {
       const resp = await fetch(`${API}/api/v1/batch-review`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ pr_urls: toReview.map(p => p.html_url), categories: bulkCategories, mode: bulkMode }),
+        body: JSON.stringify({ pr_urls: toReview.map(p => p.html_url), categories: bulkCategories, mode: bulkMode, llm_provider: localStorage.getItem("ai_pr_llm_provider") || "", llm_api_key: localStorage.getItem("ai_pr_llm_key") || "", llm_model: localStorage.getItem("ai_pr_llm_model") || "" }),
       });
       const d = await resp.json();
       if (d.status === "ok") {

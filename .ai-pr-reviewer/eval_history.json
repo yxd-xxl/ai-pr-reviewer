@@ -58,5 +58,89 @@
         "fn": 8
       }
     ]
+  },
+  {
+    "precision": 1.0,
+    "recall": 0.0,
+    "f1": 0.0,
+    "tp": 0,
+    "fp": 0,
+    "fn": 24,
+    "evaluated_at": "2026-05-31T22:17:17.823877",
+    "model": "deepseek-chat",
+    "categories": [
+      {
+        "cat": "security",
+        "precision": 1.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "analyzer": "SecurityAnalyzer",
+        "tp": 0,
+        "fp": 0,
+        "fn": 6
+      },
+      {
+        "cat": "bug",
+        "precision": 1.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "analyzer": "BugAnalyzer",
+        "tp": 0,
+        "fp": 0,
+        "fn": 10
+      },
+      {
+        "cat": "performance",
+        "precision": 1.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "analyzer": "PerformanceAnalyzer",
+        "tp": 0,
+        "fp": 0,
+        "fn": 8
+      }
+    ]
+  },
+  {
+    "precision": 1.0,
+    "recall": 0.0,
+    "f1": 0.0,
+    "tp": 0,
+    "fp": 0,
+    "fn": 24,
+    "evaluated_at": "2026-05-31T22:17:56.966090",
+    "model": "deepseek-chat",
+    "categories": [
+      {
+        "cat": "security",
+        "precision": 1.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "analyzer": "SecurityAnalyzer",
+        "tp": 0,
+        "fp": 0,
+        "fn": 6
+      },
+      {
+        "cat": "bug",
+        "precision": 1.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "analyzer": "BugAnalyzer",
+        "tp": 0,
+        "fp": 0,
+        "fn": 10
+      },
+      {
+        "cat": "performance",
+        "precision": 1.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "analyzer": "PerformanceAnalyzer",
+        "tp": 0,
+        "fp": 0,
+        "fn": 8
+      }
+    ]
   }
 ]

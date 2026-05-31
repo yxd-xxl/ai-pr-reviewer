@@ -45,7 +45,8 @@ def get_eval_metrics():
 
 
 @router.post("/run")
-def run_evaluation(token: str = Depends(get_github_token)):
+def run_evaluation(token: str = Depends(get_github_token),
+                   llm_provider: str = "", llm_api_key: str = "", llm_model: str = ""):
     """Run evaluation against all active test cases. Updates per-category metrics."""
     from src.pipeline import run_review
     from src.eval.runner import evaluate_result
@@ -55,7 +56,11 @@ def run_evaluation(token: str = Depends(get_github_token)):
     if not case_files:
         return {"status": "error", "message": "No eval cases found"}
 
-    # Run reviews in parallel (max 3 concurrent)
+    provider = llm_provider or os.getenv("LLM_PROVIDER", "mock")
+    llm_cfg = {"provider": provider, "api_key": llm_api_key or os.getenv("LLM_API_KEY", ""),
+               "base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
+               "model": llm_model or os.getenv("LLM_MODEL", "deepseek-chat")}
+
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     cases_map = {}
@@ -67,7 +72,7 @@ def run_evaluation(token: str = Depends(get_github_token)):
     all_cases, all_results, errors = [], [], []
 
     with ThreadPoolExecutor(max_workers=3) as pool:
-        futures = {pool.submit(run_review, ec.pr_url, token, categories="all"): ec for ec in cases_map.values()}
+        futures = {pool.submit(run_review, ec.pr_url, token, llm_config=llm_cfg, categories="all"): ec for ec in cases_map.values()}
         for fut in as_completed(futures):
             ec = futures[fut]
             try:
