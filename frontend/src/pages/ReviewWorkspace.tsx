@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import DiffViewer from "../components/DiffViewer";
 import FindingInspector from "../components/FindingInspector";
@@ -33,18 +33,6 @@ export default function ReviewWorkspace() {
   const [categories, setCategories] = useState("all");
   const [mode, setMode] = useState(() => localStorage.getItem("ai_pr_mode") || "balanced");
   const [postStatus, setPostStatus] = useState("");
-
-  // Auto-load stored review if it exists
-  const [hasStored, setHasStored] = useState(false);
-  useEffect(() => {
-    fetch(`${API}/api/v1/review/by-pr?pr_url=${encodeURIComponent(prUrl)}`)
-      .then(r => r.json()).then(d => {
-        if (d.status === "ok" && d.findings?.length > 0) {
-          setFindings(d.findings);
-          setHasStored(true);
-        }
-      }).catch(() => {});
-  }, [prUrl]);
 
   async function runAnalysis() {
     setLoading(true); setError(""); setFindings([]);
@@ -133,16 +121,11 @@ export default function ReviewWorkspace() {
             </select>
           </div>
 
-          {hasStored && !loading && findings.length > 0 && (
-            <div style={{ fontSize: 11, color: "#16a34a", marginTop: 6, textAlign: "center" }}>
-              {t("Showing stored review. Click below to re-analyze.")}
-            </div>
-          )}
           <button onClick={runAnalysis} disabled={loading}
             style={{ width: "100%", marginTop: 8, padding: "10px", borderRadius: 8, border: "none",
-              background: loading ? "#d1d5db" : hasStored ? "#16a34a" : "#2563eb", color: "#fff",
+              background: loading ? "#d1d5db" : "#2563eb", color: "#fff",
               cursor: loading ? "default" : "pointer", fontSize: 14, fontWeight: 600 }}>
-            {loading ? t("Analyzing…") : hasStored ? t("Re-run Analysis") : t("Run Analysis")}
+            {loading ? t("Analyzing…") : t("Run Analysis")}
           </button>
 
           {/* Metrics */}
