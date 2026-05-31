@@ -3,10 +3,10 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { getLang, setLang } from "../i18n";
 
 const links = [
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/review-queue", label: "Review Queue" },
-  { to: "/evaluation", label: "Evaluation" },
-  { to: "/settings", label: "Settings" },
+  { to: "/dashboard", labelKey: "Dashboard" },
+  { to: "/review-queue", labelKey: "Review Queue" },
+  { to: "/evaluation", labelKey: "Evaluation" },
+  { to: "/settings", labelKey: "Settings" },
 ];
 
 export default function NavBar() {
@@ -57,7 +57,7 @@ export default function NavBar() {
           padding: "6px 14px", borderRadius: 6, fontSize: 14, textDecoration: "none",
           color: pathname === l.to ? "#fff" : "var(--text-secondary)",
           background: pathname === l.to ? "#2563eb" : "transparent",
-        }}>{l.label}</Link>
+        }}>{t(l.labelKey)}</Link>
       ))}
       <div style={{ flex: 1 }} />
 
@@ -72,7 +72,7 @@ export default function NavBar() {
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a", display: "inline-block" }} />{repo || "Connected"}
       </span>
       <button onClick={logout} style={{ marginLeft: 12, background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: 13 }}>Sign Out</button>
-      <button onClick={() => { const next = getLang() === "zh" ? "en" : "zh"; setLang(next); window.location.reload(); }}
+      <button onClick={() => { const next = getLang() === "zh" ? "en" : "zh"; setLang(next); window.location.href = window.location.href; }}
         style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, padding: "4px 8px", fontWeight: 600 }}
         title="Switch language">{getLang() === "zh" ? "EN" : "中文"}</button>
       <button onClick={toggleTheme} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, padding: "4px 8px" }}>{dark ? "☀️" : "🌙"}</button>
