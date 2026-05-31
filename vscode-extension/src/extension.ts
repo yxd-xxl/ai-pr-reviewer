@@ -41,13 +41,15 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  // Inline decorations
+  // Inline decorations — applied when findings are shown
   const decorationType = vscode.window.createTextEditorDecorationType({
     backgroundColor: "rgba(220, 38, 38, 0.1)",
     borderLeft: "3px solid #dc2626",
     overviewRulerColor: "#dc2626",
     overviewRulerLane: vscode.OverviewRulerLane.Right,
   });
+  // Store for later use by reviewFile/reviewStagedChanges
+  (globalThis as any).__aiDecorations = decorationType;
 }
 
 async function reviewStagedChanges() {
