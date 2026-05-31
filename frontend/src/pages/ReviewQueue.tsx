@@ -20,6 +20,9 @@ export default function ReviewQueue() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("open");
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkResults, setBulkResults] = useState<any[] | null>(null);
+  const [bulkRunning, setBulkRunning] = useState(false);
   const repo = getRepo(); const token = getToken();
 
   useEffect(() => { if (repo && token) fetchPRs(); }, [filter]);
@@ -80,6 +83,7 @@ export default function ReviewQueue() {
        prs.length === 0 ? <p style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>No {filter} PRs.</p> :
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead><tr style={{ borderBottom: "2px solid #e5e7eb", textAlign: "left" }}>
+            <th style={{ padding: 8, width: 30 }}>#</th>
             <th style={{ padding: 8 }}>Title</th><th style={{ padding: 8 }}>Author</th>
             <th style={{ padding: 8 }}>Files</th><th style={{ padding: 8 }}>±Lines</th>
             <th style={{ padding: 8 }}>State</th><th style={{ padding: 8, width: 100 }}></th>
@@ -87,6 +91,10 @@ export default function ReviewQueue() {
           <tbody>
             {prs.map(pr => (
               <tr key={pr.number} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                <td style={{ padding: 8 }}>
+                  <input type="checkbox" checked={selected.has(pr.number)}
+                    onChange={() => { const s = new Set(selected); s.has(pr.number) ? s.delete(pr.number) : s.add(pr.number); setSelected(s); }} />
+                </td>
                 <td style={{ padding: 8 }}>
                   <div style={{ fontWeight: 600 }}>{pr.title}</div>
                   {pr.draft && <span style={{ fontSize: 11, color: "#9ca3af" }}>[DRAFT]</span>}
@@ -117,29 +125,56 @@ export default function ReviewQueue() {
         <div style={{ marginTop: 32, padding: 16, border: "1px solid #e5e7eb", borderRadius: 8 }}>
           <h3 style={{ fontSize: 16, marginBottom: 8 }}>Bulk Review</h3>
           <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>
-            Run analysis on all {prs.length} visible PRs in parallel (max 3 at a time).
+            Select PRs above with checkboxes, then click to review them all.
+            {selected.size === 0 ? ` (${prs.length} PRs visible — select specific ones)` : ` ${selected.size} selected`}
           </p>
           <button onClick={async () => {
-            const urls = prs.map(p => p.html_url);
-            setLoading(true);
+            const toReview = selected.size > 0
+              ? prs.filter(p => selected.has(p.number))
+              : prs;
+            if (selected.size === 0 && !confirm(`Review ALL ${prs.length} PRs? This may take a while.`)) return;
+            setBulkRunning(true); setBulkResults(null);
             try {
               const r = await fetch(`${API}/api/v1/batch-review`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ pr_urls: urls, categories: "all" }),
+                body: JSON.stringify({ pr_urls: toReview.map(p => p.html_url), categories: "all" }),
               });
               const d = await r.json();
-              let msg = `Batch review complete:\n`;
-              d.results?.forEach((r: any) => {
-                msg += `${r.status === "ok" ? "✓" : "✗"} ${r.url.split("/").pop()}: ${r.findings || 0} findings, risk ${r.risk_score || 0}\n`;
-              });
-              alert(msg);
+              setBulkResults(d.results || []);
             } catch { alert("Batch review failed."); }
-            setLoading(false);
-          }}
-            style={{ padding: "8px 16px", borderRadius: 6, border: "none", background: "#2563eb", color: "#fff", cursor: "pointer", fontSize: 13 }}>
-            Run Batch Review ({prs.length} PRs)
+            setBulkRunning(false);
+          }} disabled={bulkRunning}
+            style={{ padding: "8px 16px", borderRadius: 6, border: "none", background: bulkRunning ? "#d1d5db" : "#2563eb", color: "#fff", cursor: bulkRunning ? "default" : "pointer", fontSize: 13 }}>
+            {bulkRunning ? "Running..." : `Review ${selected.size > 0 ? selected.size : prs.length} PR(s)`}
           </button>
+
+          {/* Bulk results */}
+          {bulkResults && (
+            <div style={{ marginTop: 16 }}>
+              <h4 style={{ fontSize: 14, marginBottom: 8 }}>Results</h4>
+              {bulkResults.map((r: any, i: number) => (
+                <div key={i} style={{ padding: "6px 0", borderBottom: "1px solid #f3f4f6", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span>{r.status === "ok" ? "✓" : "✗"}</span>
+                  <a href={`/review/${repo}/${r.url.split("/").pop()}`}
+                    style={{ color: "#2563eb", textDecoration: "none", flex: 1 }}
+                    onClick={e => { e.preventDefault(); navigate(`/review/${repo}/${r.url.split("/").pop()}`); }}>
+                    #{r.url.split("/").pop()} {r.title?.slice(0, 60)}
+                  </a>
+                  {r.status === "ok" && (
+                    <span style={{ fontSize: 11 }}>
+                      <span style={{ color: "#dc2626" }}>{r.findings} findings</span>
+                      <span style={{ marginLeft: 8, padding: "1px 6px", borderRadius: 4, fontSize: 10,
+                        background: (r.risk_score || 0) >= 70 ? "#fee2e2" : (r.risk_score || 0) >= 40 ? "#fef3c7" : "#dcfce7",
+                        color: (r.risk_score || 0) >= 70 ? "#dc2626" : (r.risk_score || 0) >= 40 ? "#ca8a04" : "#16a34a" }}>
+                        risk {r.risk_score || 0}
+                      </span>
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
