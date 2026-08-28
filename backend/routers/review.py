@@ -1,11 +1,14 @@
 """Review router — submit, query, history (RBAC-enforced)."""
 
+import logging
 import os
 import time
 from fastapi import APIRouter, Depends, HTTPException, Query
 from backend.dependencies import get_token, get_current_user, get_github_token
 from backend.middleware import require_permission
 from backend.models import ReviewRequest, ReviewResponse, FeedbackRequest
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["review"])
 
