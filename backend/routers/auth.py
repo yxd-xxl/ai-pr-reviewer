@@ -9,6 +9,16 @@ from backend.models import UserResponse
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
+def derive_github_id(login: str) -> int:
+    """Derive a stable numeric GitHub ID from a login string.
+
+    This deterministic hash maps a login to a 12-digit numeric ID when the real
+    GitHub numeric ID is unavailable (e.g., OAuth token login). It is stable
+    across calls for the same login, enabling consistent user identification.
+    """
+    return int(login.encode().hex(), 16) % (10**12)
+
+
 class RegisterRequest(BaseModel):
     email: str = ""
     phone: str = ""
@@ -107,7 +117,7 @@ def callback(code: str, state: str = ""):
     # Find or create local user
     db = UserRepo()
     try:
-        github_id = int(gh_user.login.encode().hex(), 16) % (10**12)  # derive stable ID from login
+        github_id = derive_github_id(gh_user.login)
         user = db.find_or_create_by_github(
             github_id=github_id,
             login=gh_user.login,
@@ -151,7 +161,7 @@ def token_login(token: str):
         github_login = profile.get("login", "unknown")
         github_id = profile.get("id", 0)
         if not github_id:
-            github_id = int(github_login.encode().hex(), 16) % (10**12)
+            github_id = derive_github_id(github_login)
 
         user = db.find_or_create_by_github(
             github_id=github_id,

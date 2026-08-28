@@ -2,6 +2,7 @@
 
 import glob
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Depends
@@ -22,6 +23,11 @@ def get_eval_metrics():
     cat_results = latest.get("categories", []) if latest else []
 
     # If no stored results, show defaults
+    # These are placeholder defaults shown in the absence of any recorded eval
+    # history. They are illustrative sample values (one bug with a false negative,
+    # all security cases passing at 50%, etc.) and do not represent real measured
+    # performance. They will be replaced by actual computed metrics once the first
+    # successful eval run completes and writes to eval_history.json.
     if not cat_results:
         cat_results = [
             {"cat": "bug", "precision": 1.0, "recall": 0.50, "f1": 0.67, "analyzer": "BugAnalyzer"},
@@ -48,27 +54,69 @@ def get_eval_metrics():
 def run_evaluation(token: str = Depends(get_github_token),
                    llm_provider: str = "", llm_api_key: str = "", llm_model: str = ""):
     """Run evaluation against all active test cases. Updates per-category metrics."""
-    from src.pipeline import run_review
-    from src.eval.runner import evaluate_result
-    from src.eval.metrics import EvalCase, compute_metrics
+    from src.eval.metrics import EvalCase
 
-    case_files = sorted([f for f in glob.glob(str(EVAL_DIR / "*.json")) if not f.endswith(".disabled")])
+    case_files = _load_active_case_files()
     if not case_files:
         return {"status": "error", "message": "No eval cases found"}
 
+    llm_cfg = _build_llm_config(llm_provider, llm_api_key, llm_model)
+    cases_map = _load_cases(case_files)
+    if not cases_map:
+        return {"status": "error", "message": "No valid eval cases found"}
+
+    all_cases, all_results, by_category, errors = _run_all_cases(cases_map, token, llm_cfg)
+    if not all_results:
+        return {"status": "error", "message": f"All {len(case_files)} cases failed.", "errors": errors}
+
+    metrics, cat_data = _compute_metrics(all_cases, all_results, by_category)
+    _save_eval_history(metrics, cat_data)
+
+    return {
+        "status": "ok",
+        "precision": metrics.precision, "recall": metrics.recall, "f1": metrics.f1,
+        "tp": metrics.true_positives, "fp": metrics.false_positives, "fn": metrics.false_negatives,
+        "success": len(all_results), "failed": len(errors), "errors": errors[:3],
+        "categories": cat_data,
+    }
+
+
+def _load_active_case_files() -> list:
+    """Return sorted list of active eval case JSON files."""
+    return sorted([f for f in glob.glob(str(EVAL_DIR / "*.json")) if not f.endswith(".disabled")])
+
+
+def _build_llm_config(llm_provider: str, llm_api_key: str, llm_model: str) -> dict:
+    """Build LLM configuration from request params or environment defaults."""
     provider = llm_provider or os.getenv("LLM_PROVIDER", "mock")
-    llm_cfg = {"provider": provider, "api_key": llm_api_key or os.getenv("LLM_API_KEY", ""),
-               "base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
-               "model": llm_model or os.getenv("LLM_MODEL", "deepseek-chat")}
+    return {
+        "provider": provider,
+        "api_key": llm_api_key or os.getenv("LLM_API_KEY", ""),
+        "base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
+        "model": llm_model or os.getenv("LLM_MODEL", "deepseek-chat"),
+    }
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
+def _load_cases(case_files: list) -> dict:
+    """Load EvalCase objects from files, keyed by PR URL."""
+    from src.eval.metrics import EvalCase
     cases_map = {}
     for cf in case_files:
-        ec = EvalCase.from_file(cf)
-        cases_map[ec.pr_url] = ec
+        try:
+            ec = EvalCase.from_file(cf)
+            cases_map[ec.pr_url] = ec
+        except Exception:
+            continue
+    return cases_map
 
-    by_category: dict[str, list] = {}
+
+def _run_all_cases(cases_map: dict, token: str, llm_cfg: dict) -> tuple:
+    """Run all cases in parallel, returning results grouped by category."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from src.pipeline import run_review
+    from src.eval.runner import evaluate_result
+
+    by_category: dict[str, dict] = {}
     all_cases, all_results, errors = [], [], []
 
     with ThreadPoolExecutor(max_workers=3) as pool:
@@ -88,16 +136,23 @@ def run_evaluation(token: str = Depends(get_github_token),
             except Exception as e:
                 errors.append(f"{ec.pr_url.split('/')[-1]}: {e}")
 
-    if not all_results:
-        return {"status": "error", "message": f"All {len(case_files)} cases failed.", "errors": errors}
+    return all_cases, all_results, by_category, errors
 
-    # Overall metrics
+
+def _compute_metrics(all_cases: list, all_results: list, by_category: dict) -> tuple:
+    """Compute overall and per-category metrics."""
+    from src.eval.metrics import compute_metrics
+
     metrics = compute_metrics(all_cases, all_results)
+    cat_data = _accumulate_category_results(by_category, compute_metrics)
+    return metrics, cat_data
 
-    # Per-category metrics
-    cat_data = []
+
+def _accumulate_category_results(by_category: dict, compute_metrics) -> list:
+    """Build per-category metric records."""
     analyzer_map = {"bug": "BugAnalyzer", "security": "SecurityAnalyzer", "performance": "PerformanceAnalyzer",
                     "design": "ArchitectureAnalyzer", "failure": "FailureAnalyzer", "quality": "StyleAnalyzer"}
+    cat_data = []
     for cat, group in by_category.items():
         cm = compute_metrics(group["cases"], group["results"])
         cat_data.append({
@@ -106,7 +161,11 @@ def run_evaluation(token: str = Depends(get_github_token),
             "analyzer": analyzer_map.get(cat, "?"),
             "tp": cm.true_positives, "fp": cm.false_positives, "fn": cm.false_negatives,
         })
+    return cat_data
 
+
+def _save_eval_history(metrics, cat_data: list):
+    """Persist evaluation results to history file."""
     _save_history({
         "precision": metrics.precision, "recall": metrics.recall, "f1": metrics.f1,
         "tp": metrics.true_positives, "fp": metrics.false_positives, "fn": metrics.false_negatives,
@@ -114,14 +173,6 @@ def run_evaluation(token: str = Depends(get_github_token),
         "model": "deepseek-chat",
         "categories": cat_data,
     })
-
-    return {
-        "status": "ok",
-        "precision": metrics.precision, "recall": metrics.recall, "f1": metrics.f1,
-        "tp": metrics.true_positives, "fp": metrics.false_positives, "fn": metrics.false_negatives,
-        "success": len(all_results), "failed": len(errors), "errors": errors[:3],
-        "categories": cat_data,
-    }
 
 
 def _load_history() -> list:
