@@ -9,6 +9,49 @@ from backend.models import UserResponse
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
+def _derive_github_id(profile: dict) -> int:
+    """Return GitHub ID. If missing/zero, derive a stable ID from the login."""
+    github_id = profile.get("id", 0)
+    if not github_id:
+        login = profile.get("login", "unknown")
+        github_id = int(login.encode().hex(), 16) % (10**12)
+    return github_id
+
+
+def _find_or_create_github_user(db, profile: dict, token: str, scopes: str = "read:user,read:org,repo"):
+    """Create/find a local user from a GitHub profile and store the access token."""
+    github_id = _derive_github_id(profile)
+    github_login = profile.get("login", "unknown")
+    user = db.find_or_create_by_github(
+        github_id=github_id,
+        login=github_login,
+        name=profile.get("name"),
+        email=profile.get("email"),
+        avatar_url=profile.get("avatar_url"),
+    )
+    db.save_github_token(user["id"], token, scopes=scopes)
+    return user
+
+
+def _create_user_and_issue_jwt(db, profile: dict, token: str):
+    """Find/create GitHub user, store token, and issue JWT with user payload."""
+    from backend.auth import issue_jwt
+
+    user = _find_or_create_github_user(db, profile, token)
+    jwt = issue_jwt(user["id"], user["login"], user["github_id"])
+
+    return {
+        "access_token": jwt,
+        "token_type": "bearer",
+        "user": {
+            "id": user["id"],
+            "login": user["login"],
+            "name": user.get("name"),
+            "avatar_url": user.get("avatar_url"),
+        }
+    }
+
+
 class RegisterRequest(BaseModel):
     email: str = ""
     phone: str = ""
@@ -89,7 +132,6 @@ def callback(code: str, state: str = ""):
     """Exchange OAuth code → find/create user → issue JWT."""
     from src.auth.github_oauth import exchange_code_for_token, get_oauth_user
     from src.store.db import UserRepo
-    from backend.auth import issue_jwt
 
     client_id = os.getenv("GITHUB_CLIENT_ID", "")
     client_secret = os.getenv("GITHUB_CLIENT_SECRET", "")
@@ -104,35 +146,13 @@ def callback(code: str, state: str = ""):
     if not gh_user:
         return {"error": "Failed to fetch user"}
 
-    # Find or create local user
+    profile = {"id": getattr(gh_user, "id", 0), "login": gh_user.login, "name": gh_user.name,
+               "email": gh_user.email, "avatar_url": gh_user.avatar_url}
     db = UserRepo()
     try:
-        github_id = int(gh_user.login.encode().hex(), 16) % (10**12)  # derive stable ID from login
-        user = db.find_or_create_by_github(
-            github_id=github_id,
-            login=gh_user.login,
-            name=gh_user.name,
-            email=gh_user.email,
-            avatar_url=gh_user.avatar_url,
-        )
-        # Store GitHub token for later API calls
-        db.save_github_token(user["id"], token,
-                            scopes="read:user,read:org,repo")
+        return _create_user_and_issue_jwt(db, profile, token)
     finally:
         db.close()
-
-    jwt = issue_jwt(user["id"], user["login"], user["github_id"])
-
-    return {
-        "access_token": jwt,
-        "token_type": "bearer",
-        "user": {
-            "id": user["id"],
-            "login": user["login"],
-            "name": user.get("name"),
-            "avatar_url": user.get("avatar_url"),
-        }
-    }
 
 
 @router.post("/token")
@@ -140,7 +160,6 @@ def token_login(token: str):
     """Login with GitHub personal access token — find/create user + issue JWT."""
     from src.context.user_profile import get_user_profile
     from src.store.db import UserRepo
-    from backend.auth import issue_jwt
 
     profile = get_user_profile(token)
     if not profile:
@@ -148,35 +167,9 @@ def token_login(token: str):
 
     db = UserRepo()
     try:
-        github_login = profile.get("login", "unknown")
-        github_id = profile.get("id", 0)
-        if not github_id:
-            github_id = int(github_login.encode().hex(), 16) % (10**12)
-
-        user = db.find_or_create_by_github(
-            github_id=github_id,
-            login=github_login,
-            name=profile.get("name"),
-            email=profile.get("email"),
-            avatar_url=profile.get("avatar_url"),
-        )
-        db.save_github_token(user["id"], token,
-                            scopes="read:user,read:org,repo")
+        return _create_user_and_issue_jwt(db, profile, token)
     finally:
         db.close()
-
-    jwt = issue_jwt(user["id"], user["login"], user["github_id"])
-
-    return {
-        "access_token": jwt,
-        "token_type": "bearer",
-        "user": {
-            "id": user["id"],
-            "login": user["login"],
-            "name": user.get("name"),
-            "avatar_url": user.get("avatar_url"),
-        }
-    }
 
 
 @router.post("/refresh")
