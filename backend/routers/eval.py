@@ -2,6 +2,7 @@
 
 import glob
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, Depends
@@ -44,31 +45,62 @@ def get_eval_metrics():
     }
 
 
+def _load_active_cases():
+    """Return sorted list of active eval case file paths."""
+    return sorted([f for f in glob.glob(str(EVAL_DIR / "*.json")) if not f.endswith(".disabled")])
+
+
+def _build_llm_config(llm_provider: str, llm_api_key: str, llm_model: str) -> dict:
+    """Build LLM configuration from request params and environment defaults."""
+    provider = llm_provider or os.getenv("LLM_PROVIDER", "mock")
+    return {
+        "provider": provider,
+        "api_key": llm_api_key or os.getenv("LLM_API_KEY", ""),
+        "base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
+        "model": llm_model or os.getenv("LLM_MODEL", "deepseek-chat"),
+    }
+
+
 @router.post("/run")
 def run_evaluation(token: str = Depends(get_github_token),
                    llm_provider: str = "", llm_api_key: str = "", llm_model: str = ""):
-    """Run evaluation against all active test cases. Updates per-category metrics."""
+    """Run evaluation against all active test cases and return aggregated metrics."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     from src.pipeline import run_review
     from src.eval.runner import evaluate_result
     from src.eval.metrics import EvalCase, compute_metrics
 
-    case_files = sorted([f for f in glob.glob(str(EVAL_DIR / "*.json")) if not f.endswith(".disabled")])
+    case_files = _load_active_cases()
     if not case_files:
         return {"status": "error", "message": "No eval cases found"}
 
-    provider = llm_provider or os.getenv("LLM_PROVIDER", "mock")
-    llm_cfg = {"provider": provider, "api_key": llm_api_key or os.getenv("LLM_API_KEY", ""),
-               "base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
-               "model": llm_model or os.getenv("LLM_MODEL", "deepseek-chat")}
+    llm_cfg = _build_llm_config(llm_provider, llm_api_key, llm_model)
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    by_category, all_cases, all_results, errors = _run_eval_cases(
+        case_files, token, llm_cfg, run_review, evaluate_result, EvalCase, ThreadPoolExecutor, as_completed
+    )
 
+    if not all_results:
+        return {"status": "error", "message": f"All {len(case_files)} cases failed.", "errors": errors}
+
+    # Overall metrics
+    metrics = compute_metrics(all_cases, all_results)
+
+    # Per-category metrics
+    cat_data = _build_cat_data(by_category, compute_metrics)
+
+    return _build_result(metrics, cat_data, all_results, errors)
+
+
+def _run_eval_cases(case_files, token, llm_cfg, run_review, evaluate_result, EvalCase,
+                    ThreadPoolExecutor, as_completed):
+    """Execute the eval cases and collect outcomes grouped by category."""
     cases_map = {}
     for cf in case_files:
         ec = EvalCase.from_file(cf)
         cases_map[ec.pr_url] = ec
 
-    by_category: dict[str, list] = {}
+    by_category: dict[str, dict] = {}
     all_cases, all_results, errors = [], [], []
 
     with ThreadPoolExecutor(max_workers=3) as pool:
@@ -88,13 +120,11 @@ def run_evaluation(token: str = Depends(get_github_token),
             except Exception as e:
                 errors.append(f"{ec.pr_url.split('/')[-1]}: {e}")
 
-    if not all_results:
-        return {"status": "error", "message": f"All {len(case_files)} cases failed.", "errors": errors}
+    return by_category, all_cases, all_results, errors
 
-    # Overall metrics
-    metrics = compute_metrics(all_cases, all_results)
 
-    # Per-category metrics
+def _build_cat_data(by_category: dict[str, dict], compute_metrics):
+    """Compute and return per-category metrics."""
     cat_data = []
     analyzer_map = {"bug": "BugAnalyzer", "security": "SecurityAnalyzer", "performance": "PerformanceAnalyzer",
                     "design": "ArchitectureAnalyzer", "failure": "FailureAnalyzer", "quality": "StyleAnalyzer"}
@@ -106,7 +136,11 @@ def run_evaluation(token: str = Depends(get_github_token),
             "analyzer": analyzer_map.get(cat, "?"),
             "tp": cm.true_positives, "fp": cm.false_positives, "fn": cm.false_negatives,
         })
+    return cat_data
 
+
+def _build_result(metrics, cat_data, all_results, errors):
+    """Persist the history entry and return the API response payload."""
     _save_history({
         "precision": metrics.precision, "recall": metrics.recall, "f1": metrics.f1,
         "tp": metrics.true_positives, "fp": metrics.false_positives, "fn": metrics.false_negatives,
