@@ -54,6 +54,7 @@ class TestAccessControl:
     def test_role_upgrade(self):
         ac = AccessControl()
         ac.add_member("org1", "alice", "viewer")
+        assert not ac.check("org1", "alice", Permission.ADMIN)
         ac.add_member("org1", "alice", "admin")
         assert ac.check("org1", "alice", Permission.ADMIN)
 
