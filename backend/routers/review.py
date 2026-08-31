@@ -10,6 +10,33 @@ from backend.models import ReviewRequest, ReviewResponse, FeedbackRequest
 router = APIRouter(prefix="/api/v1", tags=["review"])
 
 
+def _risk_level(score: float) -> str:
+    """Map a numeric risk score to a severity level."""
+    if score < 15:
+        return "low"
+    if score < 40:
+        return "medium"
+    if score < 70:
+        return "high"
+    return "critical"
+
+
+def _serialize_findings(findings) -> list:
+    """Convert ResultFinding objects to the API response format."""
+    return [
+        {
+            "severity": f.severity, "category": f.category,
+            "title": f.title, "description": f.description,
+            "suggestion": f.suggestion, "confidence": f.confidence,
+            "location": {"file": f.location.file, "line": f.location.line},
+            "evidence": f.evidence, "fix_patch": f.fix_patch,
+            "fix_verified": f.fix_verified, "analyzer": f.analyzer,
+            "lifecycle_state": f.lifecycle_state,
+        }
+        for f in findings
+    ]
+
+
 @router.post("/review", response_model=ReviewResponse)
 def create_review(req: ReviewRequest, token: str = Depends(get_github_token),
                   _user=Depends(require_permission("create_review"))):
@@ -36,27 +63,13 @@ def create_review(req: ReviewRequest, token: str = Depends(get_github_token),
                                        llm_config=llm_cfg, categories=req.categories)
 
         score = calc_risk(result)
-        if score < 15: level = "low"
-        elif score < 40: level = "medium"
-        elif score < 70: level = "high"
-        else: level = "critical"
+        level = _risk_level(score)
 
         return ReviewResponse(
             status="ok",
             pr={"title": pr.title, "url": pr.url, "author": pr.author, "number": pr.number},
             files_count=len(files),
-            findings=[
-                {
-                    "severity": f.severity, "category": f.category,
-                    "title": f.title, "description": f.description,
-                    "suggestion": f.suggestion, "confidence": f.confidence,
-                    "location": {"file": f.location.file, "line": f.location.line},
-                    "evidence": f.evidence, "fix_patch": f.fix_patch,
-                    "fix_verified": f.fix_verified, "analyzer": f.analyzer,
-                    "lifecycle_state": f.lifecycle_state,
-                }
-                for f in result.findings
-            ],
+            findings=_serialize_findings(result.findings),
             summary=result.summary,
             warnings=result.warnings,
             risk_score=score,
