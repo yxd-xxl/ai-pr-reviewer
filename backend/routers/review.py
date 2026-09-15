@@ -10,6 +10,37 @@ from backend.models import ReviewRequest, ReviewResponse, FeedbackRequest
 router = APIRouter(prefix="/api/v1", tags=["review"])
 
 
+def _build_llm_config(provider: str = "", api_key: str = "", model: str = "") -> dict:
+    """Build the LLM configuration dict from overrides and environment."""
+    return {
+        "provider": provider or os.getenv("LLM_PROVIDER", "mock"),
+        "api_key": api_key or os.getenv("LLM_API_KEY", ""),
+        "base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
+        "model": model or os.getenv("LLM_MODEL", "deepseek-chat"),
+    }
+
+
+def _build_review_config(req: ReviewRequest):
+    """Build a ReviewConfig from the incoming request, applying defaults."""
+    from src.core.config import ReviewConfig
+    return ReviewConfig(
+        mode=req.mode or "balanced",
+        min_confidence=req.min_confidence if req.min_confidence > 0 else 0.65,
+        max_inline_comments=req.max_inline_comments if req.max_inline_comments > 0 else 10,
+    )
+
+
+def _risk_level(score: int) -> str:
+    """Map a numeric risk score to its qualitative level."""
+    if score < 15:
+        return "low"
+    if score < 40:
+        return "medium"
+    if score < 70:
+        return "high"
+    return "critical"
+
+
 @router.post("/review", response_model=ReviewResponse)
 def create_review(req: ReviewRequest, token: str = Depends(get_github_token),
                   _user=Depends(require_permission("create_review"))):
@@ -19,27 +50,13 @@ def create_review(req: ReviewRequest, token: str = Depends(get_github_token),
 
     try:
         t0 = time.time()
-        provider = req.llm_provider or os.getenv("LLM_PROVIDER", "mock")
-        llm_cfg = {
-            "provider": provider,
-            "api_key": req.llm_api_key or os.getenv("LLM_API_KEY", ""),
-            "base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
-            "model": req.llm_model or os.getenv("LLM_MODEL", "deepseek-chat"),
-        }
-        from src.core.config import ReviewConfig
-        config = ReviewConfig(
-            mode=req.mode or "balanced",
-            min_confidence=req.min_confidence if req.min_confidence > 0 else 0.65,
-            max_inline_comments=req.max_inline_comments if req.max_inline_comments > 0 else 10,
-        )
+        llm_cfg = _build_llm_config(req.llm_provider, req.llm_api_key, req.llm_model)
+        config = _build_review_config(req)
         pr, files, result = run_review(req.pr_url, token, config=config,
                                        llm_config=llm_cfg, categories=req.categories)
 
         score = calc_risk(result)
-        if score < 15: level = "low"
-        elif score < 40: level = "medium"
-        elif score < 70: level = "high"
-        else: level = "critical"
+        level = _risk_level(score)
 
         return ReviewResponse(
             status="ok",
@@ -207,10 +224,7 @@ def batch_review(pr_urls: list[str], categories: str = "all", mode: str = "balan
     from src.pipeline import run_review
     from src.core.config import ReviewConfig
 
-    provider = llm_provider or os.getenv("LLM_PROVIDER", "mock")
-    llm_cfg = {"provider": provider, "api_key": llm_api_key or os.getenv("LLM_API_KEY", ""),
-               "base_url": os.getenv("LLM_BASE_URL", "https://api.deepseek.com"),
-               "model": llm_model or os.getenv("LLM_MODEL", "deepseek-chat")}
+    llm_cfg = _build_llm_config(llm_provider, llm_api_key, llm_model)
     config = ReviewConfig(mode=mode or "balanced")
 
     results = []
