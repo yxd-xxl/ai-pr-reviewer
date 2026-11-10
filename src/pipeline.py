@@ -120,7 +120,7 @@ def run_review(pr_url: str, token: str,
     return pr, files, result
 
 
-def check_changes(owner: str, repo: str, token: str) -> dict:
+def check_changes(owner: str, repo: str, token: str, pr_number: int) -> dict:
     """Check for unreviewed commits. Returns dict with has_changes, head_sha, etc."""
     from src.context.change_detector import ChangeDetector
     from src.context.review_state import ReviewState
@@ -133,7 +133,7 @@ def check_changes(owner: str, repo: str, token: str) -> dict:
         return {"has_changes": False, "head_sha": "", "commit_count": 0, "diff_text": "", "files": [], "base_sha": ""}
 
     state = ReviewState()
-    last_sha = state.last_reviewed_sha(0) or ""
+    last_sha = state.last_reviewed_sha(pr_number) or ""
     diff_text = ""
     try:
         if last_sha:
@@ -181,7 +181,8 @@ def create_pr_from_changes(owner: str, repo: str, token: str, title: str, descri
         with _ur.urlopen(pr_req, timeout=15) as resp:
             result = _json.loads(resp.read())
         from src.context.review_state import ReviewState
-        ReviewState().mark_reviewed(0, head_sha, 0)
-        return {"url": result.get("html_url", ""), "number": result.get("number", 0), "branch": branch_name}
+        created_pr_number = result.get("number", 0)
+        ReviewState().mark_reviewed(created_pr_number, head_sha, 0)
+        return {"url": result.get("html_url", ""), "number": created_pr_number, "branch": branch_name}
     except Exception as e:
         return {"url": "", "number": 0, "error": str(e)}
